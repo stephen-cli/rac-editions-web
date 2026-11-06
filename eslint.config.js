@@ -2,7 +2,18 @@ import pluginVue from 'eslint-plugin-vue';
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
 
 export default defineConfigWithVueTs(
-  { ignores: ['**/dist/**', '**/storybook-static/**', '**/coverage/**'] },
+  // Build output: Vite, Storybook, coverage, the desktop shell's Rust and Tauri, Playwright's reports.
+  {
+    ignores: [
+      '**/dist/**',
+      '**/storybook-static/**',
+      '**/coverage/**',
+      '**/src-tauri/target/**',
+      '**/src-tauri/gen/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+    ],
+  },
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
   {

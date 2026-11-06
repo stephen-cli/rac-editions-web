@@ -1,5 +1,5 @@
 import type { Transport } from './client';
-import type { Platform } from '../platform/platform';
+import { watchPageDrops, type Platform } from '../platform/platform';
 
 /**
  * The browser's end of the development bridge (vite/installerBridge.ts): the real installer program,
@@ -48,8 +48,8 @@ export const bridgePlatform: Platform = {
     const response = await fetch('/__installer/pick', { method: 'POST' });
     return response.ok ? ((await response.json()) as string[]) : [];
   },
-  droppedImages() {
-    return [];
+  watchDrops(handlers) {
+    return watchPageDrops(handlers, () => null);
   },
   async showInFolder(path) {
     await fetch('/__installer/reveal', { method: 'POST', body: path });

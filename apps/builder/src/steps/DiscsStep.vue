@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RacButton, useToasts } from '@rac-editions/ui';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import DiscRow from '../components/DiscRow.vue';
 import StepHead from '../components/StepHead.vue';
@@ -48,11 +48,15 @@ async function readDvd(slot: DiscKey): Promise<void> {
   report(await session.readDvd(slot), slot);
 }
 
-function drop(event: DragEvent): void {
-  dragging.value = false;
-  const paths = session.platform?.droppedImages(event) ?? [];
-  if (paths.length) void add(paths, 'rac1');
-}
+// Images dropped anywhere on the window: each finds its own game's row.
+let stopWatching = () => {};
+onMounted(() => {
+  stopWatching = session.platform?.watchDrops({
+    hover: (over) => (dragging.value = over),
+    drop: (paths) => void add(paths, 'rac1'),
+  }) ?? stopWatching;
+});
+onBeforeUnmount(() => stopWatching());
 </script>
 
 <template>
@@ -65,9 +69,6 @@ function drop(event: DragEvent): void {
     class="discs"
     :class="{ 'discs--over': dragging }"
     aria-live="polite"
-    @dragover.prevent="dragging = true"
-    @dragleave.self="dragging = false"
-    @drop.prevent="drop"
   >
     <DiscRow
       v-for="row in rows"

@@ -7,7 +7,7 @@ import { useSession } from '../src/stores/session';
 
 const platform: Platform = {
   pickImages: async () => [],
-  droppedImages: () => [],
+  watchDrops: () => () => {},
   showInFolder: async () => {},
 };
 

@@ -35,14 +35,16 @@ const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * M
       <div class="window__body">
         <StepRail />
         <main class="window__main">
-          <RacPanel
-            v-if="session.installerError"
-            tone="hazard"
-            role="alert"
-          >
-            <b>The installer didn't start.</b> {{ session.installerError }}
-          </RacPanel>
-          <RouterView v-else />
+          <div class="window__step">
+            <RacPanel
+              v-if="session.installerError"
+              tone="hazard"
+              role="alert"
+            >
+              <b>The installer didn't start.</b> {{ session.installerError }}
+            </RacPanel>
+            <RouterView v-else />
+          </div>
         </main>
       </div>
     </div>
@@ -51,13 +53,15 @@ const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * M
 </template>
 
 <style scoped>
+/* The window fills the screen and stays put: the title bar and the step rail stay in view, and only the
+   step's own content scrolls when it is taller than the window. */
 .window {
-  min-height: 100vh;
+  height: 100vh;
 }
 .window__frame {
   display: grid;
   grid-template-rows: auto 1fr;
-  min-height: 100vh;
+  height: 100vh;
 }
 .titlebar {
   display: flex;
@@ -86,10 +90,15 @@ const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * M
   min-height: 0;
 }
 .window__main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.window__step {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 0;
+  min-height: 100%;
   max-width: 1040px;
   padding: 28px clamp(16px, 3vw, 36px) 32px;
 }

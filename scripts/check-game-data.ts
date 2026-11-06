@@ -29,8 +29,8 @@ const GAME_EXTENSIONS = new Set([
 ]);
 // A PS2 disc's boot executable (SCES_509.16) and system files.
 const DISC_NAMES = /^(SCES|SCUS|SLES|SLUS|SCPS|SLPS|SCKA|SCAJ)_\d{3}\.\d{2}$|^(SYSTEM\.CNF|IOPRP\d*\.IMG)$/i;
-// Binary files are allowed only as the site's own images and fonts.
-const BINARY_OK = new Set(['.png', '.webp', '.avif', '.jpg', '.ico', '.woff2']);
+// Binary files are allowed only as the site's and the app's own images, icons and fonts.
+const BINARY_OK = new Set(['.png', '.webp', '.avif', '.jpg', '.ico', '.icns', '.woff2']);
 const MAX_BYTES = 256 * 1024;
 const MAX_IMAGE_BYTES = 1024 * 1024;
 // Files over the limit on purpose, with why.

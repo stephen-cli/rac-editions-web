@@ -1,4 +1,4 @@
-import type { Platform } from './platform';
+import { watchPageDrops, type Platform } from './platform';
 
 /**
  * The platform while the builder runs in a browser (`pnpm dev`): a browser gives no file paths, so the
@@ -21,8 +21,8 @@ export const devPlatform: Platform = {
     });
   },
 
-  droppedImages(event) {
-    return [...(event.dataTransfer?.files ?? [])].map((file) => DEV_FOLDER + file.name);
+  watchDrops(handlers) {
+    return watchPageDrops(handlers, (file) => DEV_FOLDER + file.name);
   },
 
   readDvd(onProgress, expecting) {

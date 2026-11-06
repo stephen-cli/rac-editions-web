@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- The builder's icon: a bolt (a hexagonal nut) in bolt gold on deep space, on a chamfered plate. -->
+  <path d="M168 64h792v792l-104 104H64V168z" fill="#0E141F" stroke="#34425A" stroke-width="24"/>
+  <path d="M512 196l274 158v316L512 828 238 670V354z" fill="none" stroke="#F2B53A" stroke-width="64" stroke-linejoin="round"/>
+  <circle cx="512" cy="512" r="112" fill="none" stroke="#F2B53A" stroke-width="64"/>
+</svg>

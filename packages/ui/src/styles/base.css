@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Scroll bars in the plates' colours rather than the system's pale ones. */
+  scrollbar-color: var(--rac-edge) var(--rac-plate-900);
+}
+
 body {
   margin: 0;
   background: var(--rac-space);

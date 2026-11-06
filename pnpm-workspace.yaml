@@ -27,6 +27,11 @@ catalog:
   jsdom: 31.0.0
   axe-core: 4.14.0
   "@playwright/test": 1.64.1
+  # the desktop shell
+  "@tauri-apps/api": 2.12.4
+  "@tauri-apps/cli": 2.12.4
+  "@tauri-apps/plugin-dialog": 2.8.4
+  "@tauri-apps/plugin-opener": 2.7.2
   # lint
   eslint: 10.14.0
   eslint-plugin-vue: 10.12.0
