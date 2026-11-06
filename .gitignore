@@ -147,3 +147,11 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Storybook build
+storybook-static/
+*.tsbuildinfo
+
+# Game data never belongs here (scripts/check-game-data.ts)
+*.iso
+*.restore

@@ -1,0 +1,25 @@
+{
+  "name": "rac-editions-web",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24.11"
+  },
+  "scripts": {
+    "check": "pnpm run check:game-data && pnpm run lint && pnpm run typecheck && pnpm run test",
+    "check:game-data": "node scripts/check-game-data.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json && pnpm -r --parallel run typecheck",
+    "test": "pnpm -r run test",
+    "workshop": "pnpm --filter @rac-editions/ui run workshop",
+    "prepare": "git config core.hooksPath .githooks"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vue/eslint-config-typescript": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-vue": "catalog:",
+    "typescript": "catalog:"
+  }
+}

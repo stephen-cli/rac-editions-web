@@ -1,0 +1,46 @@
+{
+  "name": "@rac-editions/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Ratchet-styled Vue components shared by the editions site and the builder",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles/index.css"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "tokens": "node scripts/emit-tokens.ts",
+    "typecheck": "vue-tsc --build",
+    "test": "vitest run",
+    "workshop": "storybook dev --port 6006 --no-open",
+    "workshop:build": "storybook build --output-dir storybook-static"
+  },
+  "dependencies": {
+    "@fontsource/barlow": "catalog:",
+    "@fontsource/chakra-petch": "catalog:",
+    "@fontsource/jetbrains-mono": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/vue3-vite": "catalog:",
+    "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "@vue/tsconfig": "catalog:",
+    "axe-core": "catalog:",
+    "jsdom": "catalog:",
+    "storybook": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vue": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}

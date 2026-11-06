@@ -1,0 +1,40 @@
+packages:
+  - packages/*
+  - apps/*
+
+# One version of every dependency for the whole workspace: packages ask for "catalog:".
+catalog:
+  # app
+  vue: 3.5.45
+  vue-router: 5.4.0
+  pinia: 4.1.0
+  reka-ui: 2.11.0
+  "@tanstack/vue-query": 5.106.1
+  "@fontsource/barlow": 5.3.0
+  "@fontsource/chakra-petch": 5.3.0
+  "@fontsource/jetbrains-mono": 5.3.0
+  # build
+  vite: 8.3.6
+  "@vitejs/plugin-vue": 6.0.10
+  # TypeScript 6: vue-tsc and typescript-eslint need its JavaScript API, which TypeScript 7 no longer ships.
+  typescript: 6.0.3
+  vue-tsc: 3.3.14
+  "@vue/tsconfig": 0.9.1
+  "@types/node": 26.6.6
+  # tests
+  vitest: 5.1.0
+  "@vue/test-utils": 2.5.1
+  jsdom: 31.0.0
+  axe-core: 4.14.0
+  # lint
+  eslint: 10.14.0
+  eslint-plugin-vue: 10.12.0
+  "@vue/eslint-config-typescript": 14.9.0
+  # workshop
+  storybook: 10.6.5
+  "@storybook/vue3-vite": 10.6.5
+  "@storybook/addon-docs": 10.6.5
+
+# Install scripts of dependencies run only when listed here.
+allowBuilds:
+  esbuild: true

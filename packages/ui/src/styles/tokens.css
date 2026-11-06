@@ -1,0 +1,118 @@
+/* Generated from src/tokens/tokens.ts by `pnpm run tokens`; edit that file, not this one. */
+
+:root {
+  --rac-font-display: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+  --rac-font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --rac-font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --rac-cut: 14px;
+  --rac-cut-button: 10px;
+  --rac-cut-sm: 8px;
+  --rac-cut-xs: 6px;
+  --rac-space-1: 4px;
+  --rac-space-2: 8px;
+  --rac-space-3: 12px;
+  --rac-space-4: 16px;
+  --rac-space-5: 20px;
+  --rac-space-6: 24px;
+  --rac-space-8: 32px;
+  --rac-ease: cubic-bezier(.2, .8, .2, 1);
+  --rac-duration-fast: 150ms;
+  --rac-duration: 200ms;
+  --rac-duration-slow: 300ms;
+  --rac-scanlines: repeating-linear-gradient(0deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px);
+  --rac-space: #070B13;
+  --rac-plate-900: #0E141F;
+  --rac-plate-800: #141C2A;
+  --rac-plate-700: #1B2433;
+  --rac-plate-600: #243045;
+  --rac-plate-glass: rgba(20, 28, 42, 0.86);
+  --rac-rail-glass: rgba(14, 20, 31, 0.72);
+  --rac-edge: #34425A;
+  --rac-edge-soft: #273349;
+  --rac-rivet: #4A5A75;
+  --rac-ink: #E6EDF5;
+  --rac-ink-dim: #9AA9BD;
+  --rac-ink-faint: #8696AD;
+  --rac-holo: #3FD7E6;
+  --rac-holo-glass: rgba(63, 215, 230, 0.08);
+  --rac-holo-line: rgba(63, 215, 230, 0.35);
+  --rac-bolt: #F2B53A;
+  --rac-bolt-face: #F2B53A;
+  --rac-bolt-face-hover: #FFC655;
+  --rac-bolt-ink: #1A1206;
+  --rac-bolt-glass: rgba(242, 181, 58, 0.12);
+  --rac-hazard: #FF7A1A;
+  --rac-hazard-glass: rgba(255, 122, 26, 0.10);
+  --rac-clank: #8BE36B;
+  --rac-clank-glass: rgba(139, 227, 107, 0.10);
+  --rac-glow-bolt: #FFD780;
+  --rac-glow-holo: #7FE9F3;
+  --rac-glow-hazard: #FFA766;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --rac-space: #E9EEF5;
+  --rac-plate-900: #F5F7FB;
+  --rac-plate-800: #EEF2F7;
+  --rac-plate-700: #FFFFFF;
+  --rac-plate-600: #E2E8F0;
+  --rac-plate-glass: rgba(255, 255, 255, 0.9);
+  --rac-rail-glass: rgba(245, 247, 251, 0.8);
+  --rac-edge: #B4C0D0;
+  --rac-edge-soft: #D3DBE6;
+  --rac-rivet: #9AA8BB;
+  --rac-ink: #121A26;
+  --rac-ink-dim: #3E4B5E;
+  --rac-ink-faint: #566377;
+  --rac-holo: #00707D;
+  --rac-holo-glass: rgba(0, 112, 125, 0.07);
+  --rac-holo-line: rgba(0, 112, 125, 0.35);
+  --rac-bolt: #8A5A00;
+  --rac-bolt-face: #F2B53A;
+  --rac-bolt-face-hover: #FFC655;
+  --rac-bolt-ink: #1A1206;
+  --rac-bolt-glass: rgba(242, 181, 58, 0.18);
+  --rac-hazard: #B23F00;
+  --rac-hazard-glass: rgba(178, 63, 0, 0.08);
+  --rac-clank: #2D7417;
+  --rac-clank-glass: rgba(45, 116, 23, 0.08);
+  --rac-glow-bolt: #E9A21F;
+  --rac-glow-holo: #0FA3B3;
+  --rac-glow-hazard: #E0661A;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --rac-space: #E9EEF5;
+    --rac-plate-900: #F5F7FB;
+    --rac-plate-800: #EEF2F7;
+    --rac-plate-700: #FFFFFF;
+    --rac-plate-600: #E2E8F0;
+    --rac-plate-glass: rgba(255, 255, 255, 0.9);
+    --rac-rail-glass: rgba(245, 247, 251, 0.8);
+    --rac-edge: #B4C0D0;
+    --rac-edge-soft: #D3DBE6;
+    --rac-rivet: #9AA8BB;
+    --rac-ink: #121A26;
+    --rac-ink-dim: #3E4B5E;
+    --rac-ink-faint: #566377;
+    --rac-holo: #00707D;
+    --rac-holo-glass: rgba(0, 112, 125, 0.07);
+    --rac-holo-line: rgba(0, 112, 125, 0.35);
+    --rac-bolt: #8A5A00;
+    --rac-bolt-face: #F2B53A;
+    --rac-bolt-face-hover: #FFC655;
+    --rac-bolt-ink: #1A1206;
+    --rac-bolt-glass: rgba(242, 181, 58, 0.18);
+    --rac-hazard: #B23F00;
+    --rac-hazard-glass: rgba(178, 63, 0, 0.08);
+    --rac-clank: #2D7417;
+    --rac-clank-glass: rgba(45, 116, 23, 0.08);
+    --rac-glow-bolt: #E9A21F;
+    --rac-glow-holo: #0FA3B3;
+    --rac-glow-hazard: #E0661A;
+    color-scheme: light;
+  }
+}
