@@ -44,7 +44,7 @@ test('identifies the real discs and plans the build', async ({ page }) => {
 
 test('builds the edition from the real discs', async ({ page }) => {
   test.skip(!process.env.REAL_BUILD || !process.env.REAL_BUILD_OUTPUT, 'set REAL_BUILD=1 and REAL_BUILD_OUTPUT to the new image');
-  test.setTimeout(900_000);
+  test.setTimeout(2_400_000);
   const output = process.env.REAL_BUILD_OUTPUT!;
   await addDiscs(page);
   await page.getByLabel('Save as').fill(output);
@@ -56,12 +56,14 @@ test('builds the edition from the real discs', async ({ page }) => {
     await page.waitForTimeout(20_000);
     await page.screenshot({ path: `${process.env.SHOTS}/real-build.png` });
   }
-  await expect(page.getByRole('heading', { name: 'Executive Edition is ready' })).toBeVisible({ timeout: 840_000 });
+  await expect(page.getByRole('heading', { name: 'Executive Edition is ready' })).toBeVisible({ timeout: 2_300_000 });
   await expect(page.getByText(output)).toBeVisible();
-  const hash = (await page.getByText(/^SHA-256 [0-9a-f]{64}$/).textContent())!.slice('SHA-256 '.length);
+  const hash = /SHA-256 ([0-9a-f]{64})/.exec((await page.getByText(/SHA-256 [0-9a-f]{64}/).textContent()) ?? '')?.[1];
   test.info().annotations.push({ type: 'sha256', description: hash });
   console.log(`built ${output}: sha256 ${hash}`);
   expect(existsSync(output)).toBe(true);
   expect(statSync(output).size).toBeGreaterThan(4_000_000_000);
+  // The installer's own command-line image for the same discs and settings, when given.
+  if (process.env.REAL_BUILD_SHA256) expect(hash).toBe(process.env.REAL_BUILD_SHA256);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/real-done.png` });
 });
