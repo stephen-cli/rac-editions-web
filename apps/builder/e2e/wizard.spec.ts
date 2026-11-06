@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible } from './support/axe';
 
 // Disc images by name only: the fake installer recognises them by name, and no image is ever written.
 const image = (name: string) => ({ name, mimeType: 'application/octet-stream', buffer: Buffer.alloc(0) });
@@ -6,8 +7,10 @@ const PAL = image('Ratchet & Clank (Europe).iso');
 const USA = image('Ratchet & Clank (USA).iso');
 const GC = image('Ratchet & Clank - Going Commando (USA).iso');
 
+/** Saves a screenshot of the step (with SHOTS set) and checks it with axe. */
 async function shot(page: Page, name: string): Promise<void> {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+  await expectAccessible(page);
 }
 
 /** Chooses `file` with the "Choose image" button of the disc row named `game`. */

@@ -29,6 +29,7 @@
     "@vitejs/plugin-vue": "catalog:",
     "@vue/test-utils": "catalog:",
     "@vue/tsconfig": "catalog:",
+    "axe-core": "catalog:",
     "jsdom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
