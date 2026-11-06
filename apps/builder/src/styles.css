@@ -1,0 +1,74 @@
+/* Layout shared by the wizard's steps. */
+
+/* The row of Back and Next buttons at the foot of a step. */
+.step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.step-actions__end {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* A text button, such as "or read the DVD" or "Edition settings". */
+.text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--rac-holo);
+  font: 500 14px/1.3 var(--rac-font-body);
+  text-decoration: underline;
+  text-decoration-color: var(--rac-holo-line);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.text-button--quiet {
+  color: var(--rac-ink-faint);
+  text-decoration-color: var(--rac-edge);
+}
+.text-button--quiet:hover {
+  color: var(--rac-ink-dim);
+}
+.text-button:disabled {
+  color: var(--rac-ink-faint);
+  text-decoration-color: transparent;
+  cursor: default;
+}
+
+/* A feature's icon in a chamfered tile: holo, gold for a Going Commando feature, dim when out. */
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--rac-holo-glass);
+  color: var(--rac-holo);
+  box-shadow: inset 0 0 0 1px var(--rac-holo-line);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.tile--gold {
+  background: var(--rac-bolt-glass);
+  color: var(--rac-bolt);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rac-bolt) 50%, transparent);
+}
+.tile--dim {
+  background: color-mix(in srgb, var(--rac-space) 60%, transparent);
+  color: var(--rac-ink-faint);
+  box-shadow: inset 0 0 0 1px var(--rac-edge-soft);
+}
+
+.mono {
+  font: 12.5px/1.5 var(--rac-font-mono);
+  overflow-wrap: anywhere;
+}

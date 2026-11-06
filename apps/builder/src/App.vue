@@ -1,0 +1,93 @@
+<script setup lang="ts">
+import { RacIcon, RacSpace, RacToaster } from '@rac-editions/ui';
+import { computed } from 'vue';
+import StepRail from './components/StepRail.vue';
+import { useSession } from './stores/session';
+
+/**
+ * The builder's window: one starfield behind everything, the step rail on the left and the current step
+ * on the right. During a build the stars speed into a warp as the build gets going.
+ */
+const session = useSession();
+
+const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * Math.min(1, session.overall / 0.6) : 0));
+</script>
+
+<template>
+  <RacSpace
+    class="window"
+    :warp="warp"
+  >
+    <div class="window__frame">
+      <header class="titlebar">
+        <RacIcon
+          name="bolts"
+          :size="18"
+          class="titlebar__mark"
+        />
+        <span class="titlebar__name">Editions Builder</span>
+        <span
+          v-if="session.edition"
+          class="titlebar__version"
+        >installer {{ session.installerVersion }} · {{ session.edition.name.toLowerCase() }} {{ session.edition.version }}</span>
+      </header>
+      <div class="window__body">
+        <StepRail />
+        <main class="window__main">
+          <RouterView />
+        </main>
+      </div>
+    </div>
+    <RacToaster />
+  </RacSpace>
+</template>
+
+<style scoped>
+.window {
+  min-height: 100vh;
+}
+.window__frame {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rac-edge);
+  background: linear-gradient(180deg, var(--rac-plate-700), var(--rac-plate-800));
+}
+.titlebar__mark {
+  color: var(--rac-bolt);
+}
+.titlebar__name {
+  font: 600 13px var(--rac-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.titlebar__version {
+  margin-left: auto;
+  color: var(--rac-ink-faint);
+  font: 11px var(--rac-font-mono);
+}
+.window__body {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 0;
+}
+.window__main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  max-width: 1040px;
+  padding: 28px clamp(16px, 3vw, 36px) 32px;
+}
+@media (max-width: 760px) {
+  .window__body {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

@@ -155,3 +155,7 @@ storybook-static/
 # Game data never belongs here (scripts/check-game-data.ts)
 *.iso
 *.restore
+
+# Playwright
+test-results/
+playwright-report/

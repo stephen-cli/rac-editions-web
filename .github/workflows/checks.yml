@@ -33,3 +33,7 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm --filter @rac-editions/ui run workshop:build
+      - run: pnpm --filter @rac-editions/builder run build
+      # The wizard end to end against the fake installer, in Playwright's Chromium.
+      - run: pnpm --filter @rac-editions/builder exec playwright install --with-deps chromium
+      - run: pnpm --filter @rac-editions/builder run e2e

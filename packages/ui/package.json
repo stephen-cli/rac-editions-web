@@ -22,7 +22,8 @@
   "dependencies": {
     "@fontsource/barlow": "catalog:",
     "@fontsource/chakra-petch": "catalog:",
-    "@fontsource/jetbrains-mono": "catalog:"
+    "@fontsource/jetbrains-mono": "catalog:",
+    "reka-ui": "catalog:"
   },
   "peerDependencies": {
     "vue": "catalog:"
