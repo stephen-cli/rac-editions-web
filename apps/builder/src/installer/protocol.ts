@@ -43,12 +43,19 @@ export interface Edition {
   options: { economy: string[]; switches: EditionSwitch[] };
 }
 
-/** What a disc image is. A known game in the wrong version has disc null, known false, and its name and region. */
+/**
+ * What a disc image is. `disc` is set only for an image the edition is built from; `game` names the game
+ * in any version, so a wrong version has disc null, known false, and its game, name and region. An image
+ * of no game the installer knows has every field null.
+ */
 export interface Identified {
   disc: DiscKey | null;
-  name: string;
-  region: string;
-  sha256: string;
+  game: DiscKey | null;
+  /** The game's name as the edition's discs name it ("Going Commando"). */
+  name: string | null;
+  region: string | null;
+  /** The image's SHA-256; null when the file isn't a disc image. */
+  sha256: string | null;
   known: boolean;
 }
 

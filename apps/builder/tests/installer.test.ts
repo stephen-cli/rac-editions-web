@@ -29,8 +29,8 @@ describe('the installer client with the fake installer', () => {
     const found = await client.identify('D:\\Ratchet & Clank (Europe).iso', (step) => progress.push(step));
     expect(found).toMatchObject({ disc: 'rac1', known: true, region: 'PAL' });
     expect(progress.at(-1)).toMatchObject({ stage: 'hash', done: progress.at(-1)?.total });
-    expect(await client.identify('Ratchet & Clank (USA).iso')).toMatchObject({ disc: null, known: false, region: 'USA' });
-    await expect(client.identify('holiday photos.iso')).rejects.toMatchObject({ code: 'unknown_disc' });
+    expect(await client.identify('Ratchet & Clank (USA).iso')).toMatchObject({ disc: null, game: 'rac1', known: false, region: 'USA' });
+    expect(await client.identify('holiday photos.iso')).toMatchObject({ disc: null, known: false, name: null, region: null });
   });
 
   it('plans which switchable features go in and why others stay out', async () => {

@@ -15,6 +15,8 @@ import {
 export interface Transport {
   send(line: string): void;
   onLine(listener: (line: string) => void): void;
+  /** Called if the installer stops (exits or crashes); every command still waiting then fails. */
+  onClose?(listener: () => void): void;
   close(): void;
 }
 
@@ -60,6 +62,7 @@ export class InstallerClient {
       this.failReady = reject;
     });
     transport.onLine((line) => this.receive(line));
+    transport.onClose?.(() => this.stopped());
   }
 
   editions(): Promise<Edition[]> {
@@ -102,6 +105,14 @@ export class InstallerClient {
       this.pending.set(command.id, { resolve, reject, ...handlers });
       this.transport.send(JSON.stringify(command));
     });
+  }
+
+  /** The installer stopped: nothing more will answer, so every waiting command fails. */
+  private stopped(): void {
+    const error = new InstallerError('internal', 'The installer stopped.');
+    this.failReady(error);
+    for (const pending of this.pending.values()) pending.reject(error);
+    this.pending.clear();
   }
 
   private receive(line: string): void {

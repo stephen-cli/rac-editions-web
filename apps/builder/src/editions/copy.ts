@@ -80,6 +80,11 @@ export const PLANNED_EDITIONS = [
   { game: 'Up Your Arsenal', name: 'Titanium Edition' },
 ];
 
+/** A version as players see it: a release number as it is, a commit hash cut to its first 7 characters. */
+export function versionName(version: string): string {
+  return /^[0-9a-f]{40}$/.test(version) ? version.slice(0, 7) : version;
+}
+
 /** A region as players say it, for messages such as "This is the US version". */
 export function regionName(region: string): string {
   return { PAL: 'PAL (European)', USA: 'US', NTSC: 'US', JPN: 'Japanese' }[region] ?? region;

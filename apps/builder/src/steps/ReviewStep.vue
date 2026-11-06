@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import SettingsDrawer from '../components/SettingsDrawer.vue';
 import StepHead from '../components/StepHead.vue';
+import { versionName } from '../editions/copy';
 import { useSession } from '../stores/session';
 
 /**
@@ -49,7 +50,7 @@ async function build(): Promise<void> {
   <div class="summary">
     <RacPanel>
       <span class="kv-label">Edition</span>
-      <span class="kv-value">{{ session.edition?.name }} {{ session.edition?.version }}</span>
+      <span class="kv-value">{{ session.edition?.name }} {{ versionName(session.edition?.version ?? '') }}</span>
       <span class="kv-sub">{{ session.edition?.game }} ({{ session.edition?.discs.rac1?.region }})</span>
     </RacPanel>
     <RacPanel>

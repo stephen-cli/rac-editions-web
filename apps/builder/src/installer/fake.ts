@@ -40,19 +40,19 @@ const SECONDS = { hash: 3, verify: 2.5, convert: 1.5, write: 4, patch: 2, restor
 const TICK_MS = 50;
 
 /** Which disc a file name looks like; the real installer hashes the image instead. */
-function recognise(path: string): Identified | ErrorCode {
+function recognise(path: string): Identified {
   const name = path.split(/[\\/]/).pop() ?? path;
   const sha = (seed: string) => Array.from({ length: 64 }, (_, i) => ((seed.charCodeAt(i % seed.length) + i * 7) % 16).toString(16)).join('');
   if (/going.?commando|rac2/i.test(name)) {
-    return { disc: 'rac2', name: 'Going Commando', region: 'USA', sha256: sha('rac2'), known: true };
+    return { disc: 'rac2', game: 'rac2', name: 'Going Commando', region: 'USA', sha256: sha('rac2'), known: true };
   }
   if (/\(europe\)|\bpal\b|\(e\)/i.test(name)) {
-    return { disc: 'rac1', name: 'Ratchet & Clank', region: 'PAL', sha256: sha('rac1'), known: true };
+    return { disc: 'rac1', game: 'rac1', name: 'Ratchet & Clank', region: 'PAL', sha256: sha('rac1'), known: true };
   }
   if (/\(usa\)|\bntsc\b|\(u\)/i.test(name)) {
-    return { disc: null, name: 'Ratchet & Clank', region: 'USA', sha256: sha('rac1us'), known: false };
+    return { disc: null, game: 'rac1', name: 'Ratchet & Clank', region: 'USA', sha256: sha('rac1us'), known: false };
   }
-  return 'unknown_disc';
+  return { disc: null, game: null, name: null, region: null, sha256: null, known: false };
 }
 
 export class FakeInstaller implements Transport {
@@ -121,10 +121,9 @@ export class FakeInstaller implements Transport {
         return;
       case 'identify': {
         const found = recognise(command.path);
-        const size = typeof found === 'object' && found.disc ? SIZES[found.disc] : SIZES.rac1;
+        const size = found.disc ? SIZES[found.disc] : SIZES.rac1;
         await this.stage(id, 'hash', size, SECONDS.hash);
-        if (found === 'unknown_disc') this.fail(id, 'unknown_disc', `${command.path} is not a disc this installer knows.`);
-        else this.emit({ event: 'result', id, value: found });
+        this.emit({ event: 'result', id, value: found });
         return;
       }
       case 'plan':

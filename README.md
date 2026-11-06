@@ -36,6 +36,12 @@ In a browser the builder talks to `apps/builder/src/installer/fake.ts`, which sp
 protocol and recognises disc images by file name (`Ratchet & Clank (Europe).iso`, `Going Commando
 (USA).iso`); `?pace=0.1` runs it ten times faster.
 
+With `?installer=real` the dev server runs the real installer instead (`apps/builder/vite/installerBridge.ts`):
+rac-editions' `install.py --serve`, checked out beside this repository, or the command in `RAC_INSTALLER`
+(a JSON array). The file dialog is then the system's (Windows), so images have their real paths.
+`REAL_INSTALLER=1 pnpm --filter @rac-editions/builder e2e` runs the wizard that way on the real discs
+(`RAC1_IMAGE`, `RAC2_IMAGE`).
+
 After changing `packages/ui/src/tokens/tokens.ts`, run `pnpm --filter @rac-editions/ui run tokens` to
 write `tokens.css`; a test fails while the two differ.
 

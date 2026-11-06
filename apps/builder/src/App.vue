@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { RacIcon, RacSpace, RacToaster } from '@rac-editions/ui';
+import { RacIcon, RacPanel, RacSpace, RacToaster } from '@rac-editions/ui';
 import { computed } from 'vue';
 import StepRail from './components/StepRail.vue';
+import { versionName } from './editions/copy';
 import { useSession } from './stores/session';
 
 /**
@@ -29,12 +30,19 @@ const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * M
         <span
           v-if="session.edition"
           class="titlebar__version"
-        >installer {{ session.installerVersion }} · {{ session.edition.name.toLowerCase() }} {{ session.edition.version }}</span>
+        >installer {{ versionName(session.installerVersion) }} · {{ session.edition.name.toLowerCase() }} {{ versionName(session.edition.version) }}</span>
       </header>
       <div class="window__body">
         <StepRail />
         <main class="window__main">
-          <RouterView />
+          <RacPanel
+            v-if="session.installerError"
+            tone="hazard"
+            role="alert"
+          >
+            <b>The installer didn't start.</b> {{ session.installerError }}
+          </RacPanel>
+          <RouterView v-else />
         </main>
       </div>
     </div>

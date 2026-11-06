@@ -24,11 +24,14 @@ const rows = computed(() =>
 );
 const dvdBusy = computed(() => Object.values(session.discs).some((slot) => slot?.status === 'reading' && slot.fromDvd));
 
-/** Says what an added image turned out to be, and where it went if not to the row it was added to. */
+/**
+ * Says what an added image turned out to be, and where it went if not to the row it was added to. The
+ * disc is named as the edition names it, which can be shorter than the installer's name for the game.
+ */
 function report(added: Added | null, slot: DiscKey): void {
-  const found = added?.image.identified;
-  if (!added || added.image.status !== 'ok' || !found) return;
-  const name = `${found.name} (${found.region})`;
+  const disc = added && session.edition?.discs[added.row];
+  if (!added || added.image.status !== 'ok' || !disc) return;
+  const name = `${disc.name} (${disc.region})`;
   toast(added.row === slot ? `${name} recognised.` : `That was ${name}, so it went in its own row.`);
 }
 

@@ -62,6 +62,8 @@ export const useSession = defineStore('session', () => {
   const client = shallowRef<InstallerClient | null>(null);
   const platform = shallowRef<Platform | null>(null);
   const installerVersion = ref('');
+  /** Why the installer couldn't be reached, if it couldn't. */
+  const installerError = ref('');
   const editions = ref<Edition[]>([]);
   const editionId = ref('');
   const discs = reactive<Partial<Record<DiscKey, DiscSlot>>>({});
@@ -143,10 +145,20 @@ export const useSession = defineStore('session', () => {
   async function connect(installer: InstallerClient, host: Platform): Promise<void> {
     client.value = markRaw(installer);
     platform.value = markRaw(host);
-    installerVersion.value = await installer.ready;
-    editions.value = await installer.editions();
+    try {
+      installerVersion.value = await installer.ready;
+      editions.value = await installer.editions();
+    } catch (error) {
+      installerError.value = error instanceof Error ? error.message : String(error);
+      return;
+    }
     const first = editions.value[0];
     if (first) chooseEdition(first.id);
+  }
+
+  /** What the installer prints besides the protocol (a warning, or a crash), for the Details log. */
+  function noteInstallerOutput(line: string): void {
+    build.log.push(`installer: ${line}`);
   }
 
   function chooseEdition(id: string): void {
@@ -166,8 +178,8 @@ export const useSession = defineStore('session', () => {
     const current = edition.value;
     if (!current) return '';
     if (found.known && found.disc && current.discs[found.disc]) return '';
-    const wanted = Object.values(current.discs).find((disc) => disc?.name === found.name);
-    if (wanted) {
+    const wanted = found.game ? current.discs[found.game] : undefined;
+    if (wanted && found.region) {
       const how = wanted.required ? 'is built from' : 'uses';
       return `This is the ${regionName(found.region)} version. The ${current.name} ${how} the ${regionName(wanted.region)} version of ${wanted.name}.`;
     }
@@ -216,7 +228,7 @@ export const useSession = defineStore('session', () => {
       return { image: entry, row };
     } catch (error) {
       const message = error instanceof InstallerError && error.code === 'unknown_disc' && edition.value
-        ? refusal({ disc: null, name: '', region: '', sha256: '', known: false })
+        ? refusal({ disc: null, game: null, name: null, region: null, sha256: null, known: false })
         : inWords(error);
       Object.assign(entry, { status: 'refused', message });
       return { image: entry, row: slot };
@@ -335,6 +347,7 @@ export const useSession = defineStore('session', () => {
 
   return {
     installerVersion,
+    installerError,
     editions,
     editionId,
     edition,
@@ -358,6 +371,7 @@ export const useSession = defineStore('session', () => {
     sectors,
     platform,
     connect,
+    noteInstallerOutput,
     chooseEdition,
     resetSettings,
     featureState,
