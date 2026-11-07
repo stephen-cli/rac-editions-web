@@ -21,8 +21,8 @@ import { inflateRawSync } from 'node:zlib';
 interface Pin {
   /** owner/name of the rac-editions repository on GitHub */
   repository: string;
-  /** the release's tag, or null before the first release */
-  release: string | null;
+  /** the release's tag */
+  release: string;
   /** the editions whose payloads the builder bundles */
   editions: string[];
 }
@@ -99,9 +99,6 @@ function sidecarPath(triple: string): string {
 }
 
 async function fromRelease(pin: Pin, triple: string): Promise<void> {
-  if (!pin.release) {
-    throw new Error('apps/builder/installer.json pins no rac-editions release yet; use --from DIR to stage a checkout');
-  }
   const base = `https://github.com/${pin.repository}/releases/download/${encodeURIComponent(pin.release)}`;
   const sidecar = sidecarPath(triple);
   const suffix = triple.includes('windows') ? '.exe' : '';
