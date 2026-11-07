@@ -1,4 +1,4 @@
-name: checks
+name: CI
 
 on:
   push:
@@ -7,21 +7,21 @@ on:
 permissions:
   contents: read
 
+# Each check is a job of its own, so they run side by side and each passes or fails under its own name.
+# The workspace's setup is shared: .github/actions/setup.
 jobs:
-  checks:
+  game-data:
+    name: Game data
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       # Every commit the push or pull request brings, so a file added and deleted again is still checked.
-      - name: game data
+      - name: Check every new commit for game data
         run: |
           base="${{ github.event.pull_request.base.sha || github.event.before }}"
           if [ -n "$base" ] && git cat-file -e "$base" 2>/dev/null && [ "$base" != 0000000000000000000000000000000000000000 ]; then
@@ -29,17 +29,60 @@ jobs:
           else
             node scripts/check-game-data.ts --range HEAD
           fi
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm run lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm run typecheck
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm run test
+
+  workshop:
+    name: Component workshop build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm --filter @rac-editions/ui run workshop:build
+
+  builder:
+    name: Builder build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm --filter @rac-editions/builder run build
-      # The wizard end to end against the fake installer, in Playwright's Chromium.
+
+  # The wizard end to end against the fake installer, in Playwright's Chromium.
+  e2e:
+    name: Builder end-to-end
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
       - run: pnpm --filter @rac-editions/builder exec playwright install --with-deps chromium
       - run: pnpm --filter @rac-editions/builder run e2e
 
   # The builder's desktop shell (Rust): built and linted on Linux, whose WebKitGTK it needs.
   desktop:
+    name: Desktop shell (Rust)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
