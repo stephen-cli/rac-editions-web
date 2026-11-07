@@ -4,13 +4,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import SettingsDrawer from '../components/SettingsDrawer.vue';
 import StepHead from '../components/StepHead.vue';
-import { versionName } from '../editions/copy';
 import { useSession } from '../stores/session';
 
 /**
  * Step 4: the edition, the discs and the output, then everything the build will hold, each feature with
  * its icon. A feature switched off or locked by a missing disc says so. The settings stay behind a small
- * "Edition settings" link.
+ * "Edition settings" link. Discs still being checked are shown as such, and the build waits for them.
  */
 const session = useSession();
 const router = useRouter();
@@ -18,8 +17,11 @@ const settingsOpen = ref(false);
 
 const discs = computed(() =>
   (['rac1', 'rac2'] as const)
-    .filter((key) => session.hasDisc(key))
-    .map((key) => `${session.edition?.discs[key]?.name} (${session.edition?.discs[key]?.region})`),
+    .filter((key) => session.request?.discs[key])
+    .map((key) => {
+      const name = `${session.edition?.discs[key]?.name} (${session.edition?.discs[key]?.region})`;
+      return session.discs[key]?.status === 'reading' ? `${name}, checking` : name;
+    }),
 );
 
 const features = computed(() =>
@@ -50,7 +52,7 @@ async function build(): Promise<void> {
   <div class="summary">
     <RacPanel>
       <span class="kv-label">Edition</span>
-      <span class="kv-value">{{ session.edition?.name }} {{ versionName(session.edition?.version ?? '') }}</span>
+      <span class="kv-value">{{ session.edition?.name }}</span>
       <span class="kv-sub">{{ session.edition?.game }} ({{ session.edition?.discs.rac1?.region }})</span>
     </RacPanel>
     <RacPanel>
@@ -109,6 +111,7 @@ async function build(): Promise<void> {
             @click="router.push({ name: 'discs' })"
           >Add it</button>
         </span>
+        <span v-else-if="feature.state === 'checking'">Checking {{ feature.needs?.name }} ({{ feature.needs?.region }}).</span>
         <span v-else-if="feature.state === 'off'">Switched off in Edition settings.</span>
         <span v-else>{{ feature.text }}</span>
       </div>
@@ -133,6 +136,10 @@ async function build(): Promise<void> {
     >
       {{ session.planError }}
     </p>
+    <span
+      v-else-if="session.reading"
+      class="space"
+    >Checking your discs: {{ Math.floor(session.checking * 100) }}%. You can build once they're checked.</span>
     <span
       v-else-if="gigabytes"
       class="space"
@@ -160,7 +167,7 @@ async function build(): Promise<void> {
     <div class="step-actions__end">
       <RacButton
         variant="primary"
-        :disabled="!!session.planError"
+        :disabled="!session.canBuild"
         @click="build"
       >
         <RacIcon

@@ -6,8 +6,11 @@ import type { BuildRequest, Command, Edition, ErrorCode, Identified, InstallerEv
  * one and for its tests. It recognises disc images by file name, as no image is read, and spends a scaled
  * amount of time on each stage, in the real installer's order and units:
  *   identify: hash (bytes)
- *   build:    verify per disc (bytes), convert (0..1), write (bytes), patch (0..6),
+ *   build:    verify per disc (bytes), convert (0..14), write (bytes), patch (0..101, or 0..100 without
+ *             Going Commando),
  *             write the .restore file (in place only, bytes), verify the finished image (bytes)
+ * Like the real installer, it remembers the discs it has hashed, so a build's verify of a disc checked
+ * when it was added finishes at once. Its log lines are worded as the real installer's are.
  */
 
 export interface FakeOptions {
@@ -39,6 +42,17 @@ const SIZES = { rac1: 4_216_256_512, rac2: 4_434_165_760, edition: 4_220_715_008
 const SECONDS = { hash: 3, verify: 2.5, convert: 1.5, write: 4, patch: 2, restore: 1, check: 2.5 };
 const TICK_MS = 50;
 
+/** A size as the real installer logs it: GiB, one decimal. */
+const gib = (bytes: number) => `${(bytes / 2 ** 30).toFixed(1)} GB`;
+
+/** The line after a disc's hash, as the real installer logs it. */
+function hashLine(found: Identified, path: string): string {
+  if (!found.sha256) return `${path}: not an image of a PS2 disc`;
+  if (found.known) return `sha256 ${found.sha256} matches ${found.name} (${found.region})`;
+  if (found.game) return `sha256 ${found.sha256}: ${found.name} (${found.region}), not the version this edition is built from`;
+  return `sha256 ${found.sha256}: not a disc of this edition`;
+}
+
 /** Which disc a file name looks like; the real installer hashes the image instead. */
 function recognise(path: string): Identified {
   const name = path.split(/[\\/]/).pop() ?? path;
@@ -59,6 +73,8 @@ export class FakeInstaller implements Transport {
   private listener: ((line: string) => void) | null = null;
   private readonly pace: number;
   private readonly cancelled = new Set<string>();
+  /** The paths of the disc images hashed already. */
+  private readonly hashed = new Set<string>();
   private closed = false;
 
   constructor(options: FakeOptions = {}) {
@@ -122,7 +138,11 @@ export class FakeInstaller implements Transport {
       case 'identify': {
         const found = recognise(command.path);
         const size = found.disc ? SIZES[found.disc] : SIZES.rac1;
-        await this.stage(id, 'hash', size, SECONDS.hash);
+        const earlier = this.hashed.has(command.path);
+        this.emit({ event: 'log', id, text: earlier ? `${command.path}: checked earlier` : `checking ${command.path} (${gib(size)})` });
+        if (!(await this.stage(id, 'hash', size, earlier ? 0 : SECONDS.hash))) return this.fail(id, 'cancelled', 'cancelled');
+        this.hashed.add(command.path);
+        this.emit({ event: 'log', id, text: hashLine(found, command.path) });
         this.emit({ event: 'result', id, value: found });
         return;
       }
@@ -145,17 +165,24 @@ export class FakeInstaller implements Transport {
     if (!command.discs.rac1) return this.fail(id, 'missing_disc', 'Ratchet & Clank (PAL) is needed.');
     const plan = this.plan(command);
     const log = (text: string) => this.emit({ event: 'log', id, text });
-    const steps: [Stage, number, number, string][] = [
-      ['verify', SIZES.rac1, SECONDS.verify, 'Ratchet & Clank (PAL): matches the known disc'],
-    ];
-    if (command.discs.rac2) steps.push(['verify', SIZES.rac2, SECONDS.verify, 'Going Commando (USA): matches the known disc']);
-    steps.push(['convert', 1, SECONDS.convert, plan.in.includes('charge_boots') ? 'Charge Boots: model and textures from Going Commando' : 'Nothing to convert']);
+    // Each step: its stage, total, seconds at pace 1, the line logged after it, and any logged before it.
+    type Step = [Stage, number, number, string, string?];
+    const verify = (key: 'rac1' | 'rac2', name: string): Step => {
+      const path = command.discs[key]!;
+      const { sha256 } = recognise(path);
+      if (this.hashed.has(path)) return ['verify', SIZES[key], 0, `${name}: checked earlier, sha256 ${sha256}`];
+      return ['verify', SIZES[key], SECONDS.verify, `sha256 ${sha256} matches ${name}`, `checking ${path} (${gib(SIZES[key])})`];
+    };
+    const steps: Step[] = [verify('rac1', 'Ratchet & Clank (PAL)')];
+    if (command.discs.rac2) steps.push(verify('rac2', 'Going Commando (USA)'));
+    steps.push(['convert', 14, SECONDS.convert, plan.in.includes('charge_boots') ? 'Charge Boots: model and textures from Going Commando' : 'Nothing to convert']);
     steps.push(['write', SIZES.edition, SECONDS.write, command.output.mode === 'new' ? `Copying the image to ${command.output.path}` : 'Updating the image in place']);
-    steps.push(['patch', 6, SECONDS.patch, `Applied the edition: ${plan.in.length} switchable features in, ${plan.left_out.length} left out`]);
+    steps.push(['patch', command.discs.rac2 ? 101 : 100, SECONDS.patch, `Applied the edition: ${plan.in.length} switchable features in, ${plan.left_out.length} left out`]);
     if (command.output.mode === 'in_place') steps.push(['write', 52_428_800, SECONDS.restore, 'Saved the restore file beside the image']);
     steps.push(['verify', SIZES.edition, SECONDS.check, 'Hashed the finished image']);
 
-    for (const [stage, total, seconds, line] of steps) {
+    for (const [stage, total, seconds, line, before] of steps) {
+      if (before) log(before);
       if (!(await this.stage(id, stage, total, seconds))) {
         log(command.output.mode === 'new' ? 'Cancelled; the new image was deleted' : 'Cancelled; the image was restored');
         return this.fail(id, 'cancelled', 'The build was cancelled.');

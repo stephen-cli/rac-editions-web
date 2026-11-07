@@ -1,21 +1,43 @@
 <script setup lang="ts">
-import { RacButton, RacChip, RacPanel } from '@rac-editions/ui';
-import { computed } from 'vue';
+import { RacButton, RacChip, RacIcon, RacPanel } from '@rac-editions/ui';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import StepHead from '../components/StepHead.vue';
-import { fileName } from '../platform/platform';
+import { defaultFileName, fileName, inFolder } from '../platform/platform';
 import { useSession } from '../stores/session';
 
 /**
  * Step 3: a new image beside the retail one (the default), or the retail image updated in place. In place
- * saves a restore file first and asks for one confirmation.
+ * saves a restore file first and asks for one confirmation. A new image's path must name an .iso file,
+ * and the installer checks it can write there (and has the room) before the player moves on.
  */
 const session = useSession();
 const router = useRouter();
 
-const basePath = computed(() => session.baseDisc?.path ?? '');
+const basePath = computed(() => session.discs.rac1?.path ?? '');
 const editionName = computed(() => session.edition?.name ?? 'edition');
-const ready = computed(() => (session.output.mode === 'new' ? !!session.output.path.trim() : session.output.confirmed));
+const ready = computed(() => session.canOpen('review'));
+/** What the installer said is wrong with the output, once asked. */
+const refused = ref('');
+const checking = ref(false);
+const problem = computed(() => (session.output.mode === 'new' ? session.outputProblem : '') || refused.value);
+
+watch(() => [session.output.mode, session.output.path], () => (refused.value = ''));
+
+async function chooseFolder(): Promise<void> {
+  const folder = await session.platform?.pickFolder?.('Where should the new image go?');
+  if (!folder) return;
+  const name = fileName(session.output.path.trim());
+  const keep = /\.iso$/i.test(name) && name.length > '.iso'.length;
+  session.setOutputPath(inFolder(folder, keep ? name : defaultFileName(session.edition?.game ?? '', editionName.value)));
+}
+
+async function next(): Promise<void> {
+  checking.value = true;
+  refused.value = await session.refreshPlan();
+  checking.value = false;
+  if (!refused.value) await router.push({ name: 'review' });
+}
 </script>
 
 <template>
@@ -60,13 +82,38 @@ const ready = computed(() => (session.output.mode === 'new' ? !!session.output.p
               class="field"
             >
               <label for="output-path">Save as</label>
-              <input
-                id="output-path"
-                :value="session.output.path"
-                spellcheck="false"
-                @input="session.setOutputPath(($event.target as HTMLInputElement).value)"
-              >
-              <span class="field__hint">Building needs about 4.5 GB free there.</span>
+              <div class="field__row">
+                <input
+                  id="output-path"
+                  :value="session.output.path"
+                  spellcheck="false"
+                  :aria-invalid="!!problem"
+                  aria-describedby="output-path-hint"
+                  @input="session.setOutputPath(($event.target as HTMLInputElement).value)"
+                >
+                <RacButton
+                  v-if="session.platform?.pickFolder"
+                  :glow="false"
+                  @click.stop="chooseFolder"
+                >
+                  <RacIcon
+                    name="folder"
+                    :size="16"
+                  />
+                  Choose folder
+                </RacButton>
+              </div>
+              <span
+                v-if="problem"
+                id="output-path-hint"
+                class="field__hint field__hint--problem"
+                role="alert"
+              >{{ problem }}</span>
+              <span
+                v-else
+                id="output-path-hint"
+                class="field__hint"
+              >Building needs about 4.5 GB free there.</span>
             </div>
           </div>
         </div>
@@ -129,8 +176,8 @@ const ready = computed(() => (session.output.mode === 'new' ? !!session.output.p
     <div class="step-actions__end">
       <RacButton
         variant="primary"
-        :disabled="!ready"
-        @click="router.push({ name: 'review' })"
+        :disabled="!ready || checking"
+        @click="next"
       >
         Next: review
       </RacButton>
@@ -216,9 +263,19 @@ const ready = computed(() => (session.output.mode === 'new' ? !!session.output.p
   color: var(--rac-ink);
   font: 13px/1.3 var(--rac-font-mono);
 }
+.field__row {
+  display: flex;
+  gap: 10px;
+}
+.field input[aria-invalid="true"] {
+  border-color: var(--rac-hazard);
+}
 .field__hint {
   color: var(--rac-ink-faint);
   font-size: 13px;
+}
+.field__hint--problem {
+  color: var(--rac-hazard);
 }
 .confirm {
   display: grid;

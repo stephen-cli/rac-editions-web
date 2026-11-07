@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { RacButton, RacIcon, RacPanel } from '@rac-editions/ui';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import StepHead from '../components/StepHead.vue';
 import { EDITION_COPY, PLANNED_EDITIONS } from '../editions/copy';
 import { useSession } from '../stores/session';
 
-/** Step 1: the editions the installer has, beside the planned ones, at equal size. */
+/** Step 1: the editions the installer has, beside the planned ones, at equal size; then the last build, if any. */
 const session = useSession();
 const router = useRouter();
+
+const builtOn = computed(() => {
+  const at = session.lastBuild?.at;
+  return at ? new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+});
 </script>
 
 <template>
@@ -68,6 +74,20 @@ const router = useRouter();
       </RacPanel>
     </div>
   </div>
+  <p
+    v-if="session.lastBuild"
+    class="last-build"
+  >
+    <span>Last built {{ builtOn }}:</span>
+    <span class="mono">{{ session.lastBuild.path }}</span>
+    <button
+      type="button"
+      class="text-button"
+      @click="session.platform?.showInFolder(session.lastBuild.path)"
+    >
+      Show in folder
+    </button>
+  </p>
   <div class="step-actions">
     <div class="step-actions__end">
       <RacButton
@@ -134,6 +154,20 @@ const router = useRouter();
 }
 .edition__needs--planned :deep(svg) {
   color: var(--rac-ink-faint);
+}
+.last-build {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 18px 0 0;
+  color: var(--rac-ink-dim);
+  font-size: 14px;
+}
+.last-build .mono {
+  overflow-wrap: anywhere;
+  color: var(--rac-ink);
+  font-size: 13px;
 }
 @media (max-width: 640px) {
   .editions {

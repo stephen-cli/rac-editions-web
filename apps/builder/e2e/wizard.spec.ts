@@ -108,3 +108,30 @@ test('reads Going Commando from the DVD drive into its row', async ({ page }) =>
   await expect(row.getByText(/Copied from the DVD to .*Going Commando \(USA\)\.iso/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('status')).toContainText('Going Commando (USA) recognised.');
 });
+
+test('checks the new image\'s path, and picks its folder with a dialog', async ({ page }) => {
+  await toReview(page, false);
+  await page.getByRole('button', { name: 'Back' }).click();
+  const path = page.getByLabel('Save as');
+  await path.fill('C:\\Users\\player\\Desktop');
+  await expect(page.getByRole('alert')).toHaveText('End the path with a file name for the image, such as Edition.iso.');
+  await expect(page.getByRole('button', { name: 'Next: review' })).toBeDisabled();
+  await shot(page, '3-path-problem');
+  await page.getByRole('button', { name: 'Choose folder' }).click();
+  await expect(path).toHaveValue('E:\\Builds\\Ratchet & Clank - Executive Edition.iso');
+  await expect(page.getByRole('button', { name: 'Next: review' })).toBeEnabled();
+});
+
+test('checks both discs chosen together while the player goes on to Review', async ({ page }) => {
+  await page.goto('/?pace=1#/discs');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('listitem').filter({ hasText: 'Ratchet & Clank' }).first().getByRole('button', { name: 'Choose image' }).click();
+  await (await chooser).setFiles([GC, PAL]);
+  await page.getByRole('button', { name: 'Next: output' }).click();
+  await page.getByRole('button', { name: 'Next: review' }).click();
+  await expect(page.getByText(/Checking your discs/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Build Executive Edition' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Build Executive Edition' })).toBeEnabled({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Review and build' })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Going Commando (USA)', { exact: true })).toBeVisible();
+});

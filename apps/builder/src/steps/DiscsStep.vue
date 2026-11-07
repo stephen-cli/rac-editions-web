@@ -10,6 +10,7 @@ import { useSession, type Added } from '../stores/session';
 /**
  * Step 2: a row per game the edition uses. Images come from the file dialog, the DVD drive, or a drop
  * anywhere on the list; each lands in its own game's row once identified, whichever row it was added to.
+ * Checking an image carries on in the background once the player moves on.
  */
 const session = useSession();
 const router = useRouter();
@@ -26,17 +27,28 @@ const dvdBusy = computed(() => Object.values(session.discs).some((slot) => slot?
 
 /**
  * Says what an added image turned out to be, and where it went if not to the row it was added to. The
- * disc is named as the edition names it, which can be shorter than the installer's name for the game.
+ * disc is named as the edition names it, which can be shorter than the installer's name for the game. A
+ * refusal shows in the disc's row, and as a toast too if the player has moved on from this step.
  */
 function report(added: Added | null, slot: DiscKey): void {
   const disc = added && session.edition?.discs[added.row];
-  if (!added || added.image.status !== 'ok' || !disc) return;
+  if (!added || !disc) return;
   const name = `${disc.name} (${disc.region})`;
+  if (added.image.status === 'refused') {
+    if (router.currentRoute.value.name !== 'discs') toast(`The image for ${name} can't be used. ${added.image.message ?? ''}`);
+    return;
+  }
   toast(added.row === slot ? `${name} recognised.` : `That was ${name}, so it went in its own row.`);
 }
 
+/**
+ * Adds images, the first to `slot` and any more to the other rows still without a disc, so that each is
+ * checked in a row of its own; images beyond the rows are left out.
+ */
 async function add(paths: string[], slot: DiscKey): Promise<void> {
-  await Promise.all(paths.map(async (path) => report(await session.addImage(path, slot), slot)));
+  const free = rows.value.map((row) => row.id).filter((id) => id !== slot && session.discs[id]?.status !== 'ok');
+  const slots = [slot, ...free];
+  await Promise.all(paths.slice(0, slots.length).map(async (path, at) => report(await session.addImage(path, slots[at]!), slots[at]!)));
 }
 
 async function choose(slot: DiscKey): Promise<void> {
@@ -93,7 +105,7 @@ onBeforeUnmount(() => stopWatching());
     <div class="step-actions__end">
       <RacButton
         variant="primary"
-        :disabled="!session.baseDisc || session.reading"
+        :disabled="!session.canOpen('output')"
         @click="router.push({ name: 'output' })"
       >
         Next: output

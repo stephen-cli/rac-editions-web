@@ -13,6 +13,8 @@ import { useSession } from '../stores/session';
 const session = useSession();
 const router = useRouter();
 const log = useTemplateRef<HTMLElement>('log');
+/** Room for the sector counter's largest value: the image's sectors, or the plan's estimate until the write starts. */
+const sectorRoom = computed(() => session.sectors.total || Math.ceil((session.plan?.bytes_needed ?? 0) / 2048));
 
 const title = computed(() => {
   const name = session.edition?.name ?? 'edition';
@@ -52,6 +54,7 @@ watch(
       />
       <RacCountUp
         :value="session.sectors.written"
+        :max="sectorRoom"
         :duration="250"
       />
       <small>sectors<br>written</small>

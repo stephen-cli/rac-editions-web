@@ -13,6 +13,8 @@ import type { Plugin } from 'vite';
  *                                           and the process's exit (event "exit")
  *   POST /__installer/send?session=<id>     one command line for the installer's stdin
  *   POST /__installer/pick                  Windows: the system's file dialog; answers the chosen paths
+ *   POST /__installer/pick-folder           Windows: the system's folder dialog, titled with the posted text;
+ *                                           answers the chosen folder, or null
  *   POST /__installer/reveal                Windows: Explorer with the posted path selected
  *
  * The page opts in with ?installer=real (see src/main.ts).
@@ -40,9 +42,9 @@ function body(request: IncomingMessage): Promise<string> {
 }
 
 /** Runs PowerShell and resolves to what it printed. */
-function powershell(script: string): Promise<string> {
+function powershell(script: string, env: Record<string, string> = {}): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', script]);
+    const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', script], { env: { ...process.env, ...env } });
     let out = '';
     child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString('utf8')));
     child.on('error', reject);
@@ -57,6 +59,15 @@ $dialog.Title = 'Choose disc images'
 $dialog.Filter = 'Disc images (*.iso;*.bin;*.img)|*.iso;*.bin;*.img|All files (*.*)|*.*'
 $dialog.Multiselect = $true
 if ($dialog.ShowDialog() -eq 'OK') { $dialog.FileNames | ConvertTo-Json -Compress } else { '[]' }
+`;
+
+// The folder dialog's title comes in an environment variable, so no text from the page is ever parsed as script.
+const PICK_FOLDER_SCRIPT = `
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = $env:RAC_DIALOG_TITLE
+$dialog.UseDescriptionForTitle = $true
+if ($dialog.ShowDialog() -eq 'OK') { $dialog.SelectedPath | ConvertTo-Json -Compress } else { 'null' }
 `;
 
 export function installerBridge(options: BridgeOptions): Plugin {
@@ -113,6 +124,11 @@ export function installerBridge(options: BridgeOptions): Plugin {
           if (url.pathname === '/pick' && request.method === 'POST') {
             const chosen = JSON.parse((await powershell(PICK_SCRIPT)).trim() || '[]') as string | string[];
             response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify([chosen].flat()));
+            return;
+          }
+          if (url.pathname === '/pick-folder' && request.method === 'POST') {
+            const chosen = (await powershell(PICK_FOLDER_SCRIPT, { RAC_DIALOG_TITLE: await body(request) })).trim();
+            response.writeHead(200, { 'Content-Type': 'application/json' }).end(chosen || 'null');
             return;
           }
           if (url.pathname === '/reveal' && request.method === 'POST') {

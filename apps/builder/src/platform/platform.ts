@@ -19,6 +19,8 @@ export interface Platform {
    * is in it.
    */
   readDvd?: (onProgress: (fraction: number) => void, expecting: DiscKey) => Promise<string>;
+  /** Asks for a folder with the system's folder dialog; returns its path, or null if cancelled. */
+  pickFolder?: (title: string) => Promise<string | null>;
   /** Opens the folder holding `path` with the file selected. */
   showInFolder(path: string): Promise<void>;
 }
@@ -57,14 +59,46 @@ export function watchPageDrops({ hover, drop }: DropHandlers, pathOf: (file: Fil
   };
 }
 
-/** The default name for a new image, beside the base disc's image. */
+/** The default file name for a new image. */
+export function defaultFileName(game: string, editionName: string): string {
+  return `${game} - ${editionName}.iso`;
+}
+
+/** The folder part of a path, with its trailing separator; empty for a bare file name. */
+export function folderOf(path: string): string {
+  const cut = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+  return cut >= 0 ? path.slice(0, cut + 1) : '';
+}
+
+/** `name` in `folder`, joined with the separator the folder already uses. */
+export function inFolder(folder: string, name: string): string {
+  if (/[\\/]$/.test(folder)) return folder + name;
+  const separator = folder.includes('/') && !folder.includes('\\') ? '/' : '\\';
+  return `${folder}${separator}${name}`;
+}
+
+/** The default path for a new image: beside the base disc's image. */
 export function defaultOutputPath(basePath: string, game: string, editionName: string): string {
-  const cut = Math.max(basePath.lastIndexOf('\\'), basePath.lastIndexOf('/'));
-  const folder = cut >= 0 ? basePath.slice(0, cut + 1) : '';
-  return `${folder}${game} - ${editionName}.iso`;
+  return folderOf(basePath) + defaultFileName(game, editionName);
 }
 
 /** The file name at the end of a path. */
 export function fileName(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
+}
+
+/**
+ * What's wrong with a path for the new image, in the player's words; empty if nothing the builder can see
+ * is. Whether its folder can be written to, and has room, is the installer's to say (its plan checks).
+ */
+export function outputPathProblem(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return 'Enter where to save the new image.';
+  // A drive (C:\), a network share (\\server\) or a root (/).
+  if (!/^([a-z]:[\\/]|\\\\|\/)/i.test(trimmed)) return 'Enter the full path, starting with the drive, such as C:\\Games\\Edition.iso.';
+  const name = fileName(trimmed);
+  if (!/\.iso$/i.test(name)) return 'End the path with a file name for the image, such as Edition.iso.';
+  if (name.length === '.iso'.length) return 'Give the image a name before .iso.';
+  if (/[<>:"|?*]/.test(name)) return 'A file name can\'t contain < > : " | ? or *.';
+  return '';
 }

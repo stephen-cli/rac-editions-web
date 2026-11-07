@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { RacIcon, RacPanel, RacSpace, RacToaster } from '@rac-editions/ui';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import StepRail from './components/StepRail.vue';
 import { versionName } from './editions/copy';
-import { useSession } from './stores/session';
+import { useSession, type StepId } from './stores/session';
 
 /**
  * The builder's window: one starfield behind everything, the step rail on the left and the current step
  * on the right. During a build the stars speed into a warp as the build gets going.
  */
 const session = useSession();
+
+const route = useRoute();
+const router = useRouter();
+
+// A disc checked in the background can turn out wrong after the player has moved on: back to the step
+// that needs them, where the disc's row says why. Only once every check has finished, as an image can
+// leave a row empty for a moment while it moves to its own game's.
+watch(
+  () => [session.lastOpen, session.reading],
+  () => {
+    if (session.reading || !route.name || session.canOpen(route.name as StepId)) return;
+    void router.replace({ name: session.lastOpen });
+  },
+);
 
 const warp = computed(() => (session.build.state === 'running' ? 0.35 + 0.65 * Math.min(1, session.overall / 0.6) : 0));
 </script>

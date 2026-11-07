@@ -56,7 +56,7 @@ export class TauriTransport implements Transport {
 }
 
 /**
- * The computer through the desktop shell: the system's file dialog, Explorer or Finder for the finished
+ * The computer through the desktop shell: the system's file and folder dialogs, Explorer or Finder for the finished
  * image, and drops with their real paths. Reading a DVD isn't there yet.
  */
 export const tauriPlatform: Platform = {
@@ -67,6 +67,10 @@ export const tauriPlatform: Platform = {
       filters: [{ name: 'Disc images', extensions: ['iso', 'bin', 'img'] }],
     });
     return chosen ?? [];
+  },
+
+  async pickFolder(title) {
+    return open({ title, directory: true });
   },
 
   watchDrops({ hover, drop }) {

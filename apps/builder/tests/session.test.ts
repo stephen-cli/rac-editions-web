@@ -1,8 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InstallerClient } from '../src/installer/client';
 import { FakeInstaller } from '../src/installer/fake';
-import type { Platform } from '../src/platform/platform';
+import { outputPathProblem, type Platform } from '../src/platform/platform';
+import type { Memory, Remembered } from '../src/stores/memory';
 import { useSession } from '../src/stores/session';
 
 const platform: Platform = {
@@ -11,11 +12,18 @@ const platform: Platform = {
   showInFolder: async () => {},
 };
 
-async function session() {
+async function session(memory?: Memory) {
   setActivePinia(createPinia());
   const store = useSession();
-  await store.connect(new InstallerClient(new FakeInstaller({ pace: 0.02 })), platform);
+  await store.connect(new InstallerClient(new FakeInstaller({ pace: 0.02 })), platform, memory);
   return store;
+}
+
+/** A memory holding `remembered`, keeping what's saved in `saved`. */
+function memoryOf(remembered: Remembered) {
+  const saved: Remembered[] = [];
+  const memory: Memory = { load: () => remembered, save: (state) => saved.push(JSON.parse(JSON.stringify(state)) as Remembered) };
+  return { memory, saved };
 }
 
 describe('the session', () => {
@@ -114,5 +122,73 @@ describe('the session', () => {
     expect(store.sectors.written).toBe(store.sectors.total);
     expect(store.overall).toBe(1);
     expect(store.canOpen('done')).toBe(true);
+  });
+
+  it('lets the player go on while a disc is checked, and builds only once it is', async () => {
+    const store = await session();
+    const checked = store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac1');
+    expect(store.discs.rac1?.status).toBe('reading');
+    expect(store.canOpen('review')).toBe(true);
+    expect(store.canBuild).toBe(false);
+    await checked;
+    expect(store.canBuild).toBe(true);
+  });
+
+  it('holds the player on Output while the new image\'s path names no .iso file', async () => {
+    const store = await session();
+    await store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac1');
+    store.setOutputPath('C:\\Users\\steph\\Desktop');
+    expect(store.outputProblem).toBe('End the path with a file name for the image, such as Edition.iso.');
+    expect(store.lastOpen).toBe('output');
+  });
+
+  it('brings back the last run\'s discs, settings and output, and remembers changes', async () => {
+    const { memory, saved } = memoryOf({
+      edition: 'rac1-executive',
+      discs: { rac1: 'D:\\Ratchet & Clank (Europe).iso' },
+      output: { mode: 'in_place', path: '', pathEdited: false },
+      settings: { 'rac1-executive': { switches: { quick_select_pages: false }, economy: 'classic' } },
+      lastBuild: { edition: 'rac1-executive', path: 'E:\\Edition.iso', sha256: 'ab', at: '2026-11-07T09:00:00Z' },
+    });
+    const store = await session(memory);
+    expect(store.economy).toBe('classic');
+    expect(store.switches.quick_select_pages).toBe(false);
+    expect(store.output).toMatchObject({ mode: 'in_place', confirmed: false });
+    expect(store.lastBuild?.path).toBe('E:\\Edition.iso');
+    expect(store.discs.rac1?.status).toBe('reading');
+    await vi.waitFor(() => expect(store.discs.rac1?.status).toBe('ok'));
+    store.economy = 'skill';
+    await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({
+      discs: { rac1: 'D:\\Ratchet & Clank (Europe).iso' },
+      settings: { 'rac1-executive': { economy: 'skill' } },
+    }));
+  });
+});
+
+describe('a new image\'s path', () => {
+  it.each([
+    ['', 'Enter where to save the new image.'],
+    ['Edition.iso', 'Enter the full path, starting with the drive, such as C:\\Games\\Edition.iso.'],
+    ['C:\\Users\\steph\\Desktop', 'End the path with a file name for the image, such as Edition.iso.'],
+    ['C:\\Users\\steph\\Desktop\\', 'End the path with a file name for the image, such as Edition.iso.'],
+    ['C:\\Games\\.iso', 'Give the image a name before .iso.'],
+    ['C:\\Games\\a?b.iso', 'A file name can\'t contain < > : " | ? or *.'],
+    ['C:\\Games\\Ratchet & Clank - Executive Edition.ISO', ''],
+    ['\\\\nas\\games\\Edition.iso', ''],
+    ['/home/player/Edition.iso', ''],
+  ])('%j: %j', (path, problem) => expect(outputPathProblem(path)).toBe(problem));
+});
+
+describe('images checked side by side', () => {
+  it('trade rows when each was added to the other game\'s row', async () => {
+    const store = await session();
+    const goingCommando = store.addImage('D:\\Going Commando (USA).iso', 'rac1');
+    const ratchet = store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac2');
+    await goingCommando;
+    expect(store.discs.rac1?.status).toBe('reading');
+    expect(store.reading).toBe(true);
+    await ratchet;
+    expect(store.discs.rac1?.path).toBe('D:\\Ratchet & Clank (Europe).iso');
+    expect(store.discs.rac2?.path).toBe('D:\\Going Commando (USA).iso');
   });
 });

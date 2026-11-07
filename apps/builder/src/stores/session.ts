@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
-import { computed, markRaw, reactive, ref, shallowRef } from 'vue';
+import { computed, markRaw, reactive, ref, shallowRef, watch } from 'vue';
 import { EDITION_COPY, regionName } from '../editions/copy';
 import { InstallerError, type InstallerClient, type Progress } from '../installer/client';
 import type { Built, BuildRequest, DiscKey, Edition, ErrorCode, Identified, Plan, Stage } from '../installer/protocol';
-import { defaultOutputPath, type Platform } from '../platform/platform';
+import { defaultOutputPath, outputPathProblem, type Platform } from '../platform/platform';
+import type { LastBuild, Memory, Remembered } from './memory';
 
 export type StepId = 'edition' | 'discs' | 'output' | 'review' | 'build' | 'done';
 export const STEPS: StepId[] = ['edition', 'discs', 'output', 'review', 'build', 'done'];
@@ -26,7 +27,8 @@ export interface StageRow {
   total: number;
 }
 
-export type FeatureState = 'on' | 'off' | 'locked';
+/** `checking`: the disc the feature needs is still being checked. */
+export type FeatureState = 'on' | 'off' | 'locked' | 'checking';
 
 /** An image added, and the game's row it ended in (its own game's, or the one it was added to if refused). */
 export interface Added {
@@ -72,6 +74,8 @@ export const useSession = defineStore('session', () => {
   const economy = ref('');
   const plan = ref<Plan | null>(null);
   const planError = ref('');
+  const lastBuild = ref<LastBuild | null>(null);
+  const remembered = ref<Remembered>({});
   const furthest = ref(0);
   const build = reactive({
     state: 'idle' as 'idle' | 'running' | 'done' | 'failed' | 'cancelled',
@@ -88,16 +92,33 @@ export const useSession = defineStore('session', () => {
   const baseDisc = computed(() => discs.rac1?.status === 'ok' ? discs.rac1 : null);
   const hasDisc = (key: DiscKey) => discs[key]?.status === 'ok';
   const reading = computed(() => Object.values(discs).some((slot) => slot?.status === 'reading'));
+  /** A disc's image the build can be planned with: being checked, or checked and right. */
+  const added = (key: DiscKey) => {
+    const slot = discs[key];
+    return slot && slot.status !== 'refused' && slot.path ? slot : null;
+  };
+  /** How far the discs' checks have got, 0 to 1, across those still running. */
+  const checking = computed(() => {
+    const running = Object.values(discs).filter((slot) => slot?.status === 'reading');
+    return running.length ? running.reduce((sum, slot) => sum + slot!.progress, 0) / running.length : 1;
+  });
+  const outputProblem = computed(() => (output.mode === 'new' ? outputPathProblem(output.path) : ''));
 
-  /** The step furthest along that the player may open now. */
+  /**
+   * The step furthest along that the player may open now. The discs' checks carry on in the background
+   * while the player chooses the output and reviews; only the build waits for them.
+   */
   const reachable = computed<StepId>(() => {
     if (build.state === 'done') return 'done';
     if (build.state === 'running') return 'build';
     if (!edition.value) return 'edition';
-    if (!baseDisc.value || reading.value) return 'discs';
-    if (output.mode === 'new' ? !output.path : !output.confirmed) return 'output';
+    if (!added('rac1')) return 'discs';
+    if (output.mode === 'new' ? outputProblem.value : !output.confirmed) return 'output';
     return 'review';
   });
+
+  /** Whether the build can start: every disc checked, and nothing wrong with the plan. */
+  const canBuild = computed(() => !!baseDisc.value && !reading.value && !planError.value && reachable.value === 'review');
 
   /** The furthest step up to Review the player may open now. */
   const lastOpen = computed<StepId>(() => (reachable.value === 'done' || reachable.value === 'build' ? 'review' : reachable.value));
@@ -116,6 +137,7 @@ export const useSession = defineStore('session', () => {
 
   function featureState(id: string): FeatureState {
     const needs = edition.value?.options.switches.find((entry) => entry.id === id)?.needs;
+    if (needs && discs[needs]?.status === 'reading') return 'checking';
     if (needs && !hasDisc(needs)) return 'locked';
     return switches[id] === false ? 'off' : 'on';
   }
@@ -127,10 +149,13 @@ export const useSession = defineStore('session', () => {
     return options.economy[0] !== economy.value || options.switches.some((entry) => featureState(entry.id) === 'off');
   });
 
+  /** The build as it stands; discs still being checked are in it, and the build waits for them. */
   const request = computed<BuildRequest | null>(() => {
-    if (!edition.value || !baseDisc.value) return null;
-    const paths: BuildRequest['discs'] = { rac1: baseDisc.value.path };
-    if (hasDisc('rac2')) paths.rac2 = discs.rac2!.path;
+    const base = added('rac1');
+    if (!edition.value || !base) return null;
+    const paths: BuildRequest['discs'] = { rac1: base.path };
+    const rac2 = added('rac2');
+    if (rac2) paths.rac2 = rac2.path;
     return {
       edition: edition.value.id,
       discs: paths,
@@ -142,7 +167,12 @@ export const useSession = defineStore('session', () => {
     };
   });
 
-  async function connect(installer: InstallerClient, host: Platform): Promise<void> {
+  /**
+   * Connects to the installer and the computer. With a memory, the last run's edition, settings, output
+   * and discs come back, and the discs are checked again in the background; the session is remembered as
+   * it changes.
+   */
+  async function connect(installer: InstallerClient, host: Platform, memory?: Memory): Promise<void> {
     client.value = markRaw(installer);
     platform.value = markRaw(host);
     try {
@@ -152,9 +182,32 @@ export const useSession = defineStore('session', () => {
       installerError.value = error instanceof Error ? error.message : String(error);
       return;
     }
-    const first = editions.value[0];
+    remembered.value = memory?.load() ?? {};
+    const last = remembered.value;
+    const first = editions.value.find((entry) => entry.id === last.edition) ?? editions.value[0];
     if (first) chooseEdition(first.id);
+    if (last.lastBuild?.edition === editionId.value) lastBuild.value = last.lastBuild;
+    if (last.output) Object.assign(output, last.output, { confirmed: false });
+    for (const [key, path] of Object.entries(last.discs ?? {}) as [DiscKey, string][]) {
+      if (edition.value?.discs[key]) void addImage(path, key, { remembered: true });
+    }
+    if (memory) watch(rememberable, (state) => memory.save(state), { deep: true });
   }
+
+  /** What's kept between runs: the discs found right, but never an in-place confirmation. */
+  const rememberable = computed<Remembered>(() => {
+    const settings = { ...remembered.value.settings };
+    if (editionId.value) settings[editionId.value] = { switches: { ...switches }, economy: economy.value };
+    const paths: Remembered['discs'] = {};
+    for (const key of ['rac1', 'rac2'] as const) if (hasDisc(key)) paths[key] = discs[key]!.path;
+    return {
+      edition: editionId.value,
+      discs: paths,
+      output: { mode: output.mode, path: output.path, pathEdited: output.pathEdited },
+      settings,
+      lastBuild: lastBuild.value ?? remembered.value.lastBuild,
+    };
+  });
 
   /** What the installer prints besides the protocol (a warning, or a crash), for the Details log. */
   function noteInstallerOutput(line: string): void {
@@ -163,14 +216,16 @@ export const useSession = defineStore('session', () => {
 
   function chooseEdition(id: string): void {
     editionId.value = id;
-    resetSettings();
+    resetSettings(true);
   }
 
-  function resetSettings(): void {
+  /** The edition's designed settings; `fromMemory`, the player's own from a past run where they still apply. */
+  function resetSettings(fromMemory = false): void {
     const options = edition.value?.options;
     if (!options) return;
-    for (const entry of options.switches) switches[entry.id] = true;
-    economy.value = options.economy[0] ?? '';
+    const saved = fromMemory ? remembered.value.settings?.[editionId.value] : undefined;
+    for (const entry of options.switches) switches[entry.id] = saved?.switches[entry.id] ?? true;
+    economy.value = saved && options.economy.includes(saved.economy) ? saved.economy : options.economy[0] ?? '';
   }
 
   /** Why an identified image can't be used, in the player's words; empty if it can. */
@@ -189,21 +244,24 @@ export const useSession = defineStore('session', () => {
 
   /**
    * Reads a disc image into the row it was added from. Once identified it moves to its own game's row,
-   * and the row it came from gets back whatever disc it held before. Resolves to the image and the row
-   * it ended in.
+   * and the row it came from gets back whatever disc it held before, or the image being checked in the
+   * row it moved to. Resolves to the image and the row it ended in.
    */
   async function addImage(
     path: string,
     slot: DiscKey,
-    dvd?: { reading: DiscSlot; previous: DiscSlot | undefined },
+    how: { dvd?: { reading: DiscSlot; previous: DiscSlot | undefined }; remembered?: boolean } = {},
   ): Promise<Added | null> {
     const installer = client.value;
     if (!installer) return null;
+    const { dvd } = how;
     const fromDvd = !!dvd;
     const previous = dvd ? dvd.previous : discs[slot];
     const entry = dvd?.reading ?? reactive<DiscSlot>({ path, status: 'reading', progress: 0, fromDvd });
     Object.assign(entry, { path, status: 'reading', progress: fromDvd ? 0.5 : 0, fromDvd });
     discs[slot] = entry;
+    // Named now, so the player can choose the output while the image is checked.
+    if (slot === 'rac1') nameOutputBeside(path);
     try {
       const found = await installer.identify(path, ({ done, total }) => {
         entry.progress = (fromDvd ? 0.5 : 0) + (total ? done / total : 0) * (fromDvd ? 0.5 : 1);
@@ -218,21 +276,33 @@ export const useSession = defineStore('session', () => {
       entry.progress = 1;
       const row = found.disc ?? slot;
       if (row !== slot && discs[slot] === entry) {
-        if (previous?.status === 'ok') discs[slot] = previous;
+        // An image still being checked in its own game's row trades places with it, so it stays in view
+        // (and counted as being checked) until it finds its own row.
+        const waiting = discs[row]?.status === 'reading' ? discs[row] : undefined;
+        if (waiting) discs[slot] = waiting;
+        else if (previous?.status === 'ok') discs[slot] = previous;
         else delete discs[slot];
       }
       discs[row] = entry;
-      if (row === 'rac1' && !output.pathEdited && edition.value) {
-        output.path = defaultOutputPath(path, edition.value.game, edition.value.name);
-      }
+      if (row === 'rac1') nameOutputBeside(path);
       return { image: entry, row };
     } catch (error) {
+      // A disc from the last run that has since moved or gone: forget it rather than refuse it.
+      if (how.remembered && error instanceof InstallerError && error.code === 'missing_disc') {
+        if (discs[slot] === entry) delete discs[slot];
+        return null;
+      }
       const message = error instanceof InstallerError && error.code === 'unknown_disc' && edition.value
         ? refusal({ disc: null, game: null, name: null, region: null, sha256: null, known: false })
         : inWords(error);
       Object.assign(entry, { status: 'refused', message });
       return { image: entry, row: slot };
     }
+  }
+
+  /** Names the new image beside the base disc's image, until the player names it themselves. */
+  function nameOutputBeside(path: string): void {
+    if (!output.pathEdited && edition.value) output.path = defaultOutputPath(path, edition.value.game, edition.value.name);
   }
 
   /** Copies the DVD in the drive to an image, then reads it like any other image. */
@@ -243,7 +313,7 @@ export const useSession = defineStore('session', () => {
     const reading = reactive<DiscSlot>({ path: '', status: 'reading', progress: 0, fromDvd: true });
     discs[slot] = reading;
     const path = await host.readDvd((fraction) => (reading.progress = fraction / 2), slot);
-    return addImage(path, slot, { reading, previous });
+    return addImage(path, slot, { dvd: { reading, previous } });
   }
 
   function removeDisc(slot: DiscKey): void {
@@ -255,8 +325,9 @@ export const useSession = defineStore('session', () => {
     output.pathEdited = true;
   }
 
-  async function refreshPlan(): Promise<void> {
-    if (!client.value || !request.value) return;
+  /** Asks the installer for the plan; resolves to what's wrong with it, in words, or '' if nothing is. */
+  async function refreshPlan(): Promise<string> {
+    if (!client.value || !request.value) return '';
     planError.value = '';
     try {
       plan.value = await client.value.plan(request.value);
@@ -264,6 +335,7 @@ export const useSession = defineStore('session', () => {
       plan.value = null;
       planError.value = inWords(error);
     }
+    return planError.value;
   }
 
   /** The rows the build will show, in the installer's order, before any progress arrives. */
@@ -323,7 +395,7 @@ export const useSession = defineStore('session', () => {
 
   async function startBuild(): Promise<void> {
     const installer = client.value;
-    if (!installer || !request.value) return;
+    if (!installer || !request.value || !canBuild.value) return;
     Object.assign(build, { state: 'running', rows: expectedRows(), index: 0, log: [], result: null, error: '' });
     const started = installer.build(request.value, {
       onProgress,
@@ -334,6 +406,7 @@ export const useSession = defineStore('session', () => {
       build.result = await started.result;
       build.rows.forEach((row) => (row.state = 'done'));
       build.state = 'done';
+      lastBuild.value = { edition: editionId.value, ...build.result, at: new Date().toISOString() };
     } catch (error) {
       build.state = error instanceof InstallerError && error.code === 'cancelled' ? 'cancelled' : 'failed';
       build.error = inWords(error);
@@ -360,6 +433,10 @@ export const useSession = defineStore('session', () => {
     economy,
     plan,
     planError,
+    lastBuild,
+    checking,
+    outputProblem,
+    canBuild,
     furthest,
     build,
     reachable,

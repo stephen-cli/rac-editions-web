@@ -21,6 +21,11 @@ export const devPlatform: Platform = {
     });
   },
 
+  // A browser has no folder dialog: this one always picks the same folder.
+  async pickFolder() {
+    return 'E:\\Builds';
+  },
+
   watchDrops(handlers) {
     return watchPageDrops(handlers, (file) => DEV_FOLDER + file.name);
   },

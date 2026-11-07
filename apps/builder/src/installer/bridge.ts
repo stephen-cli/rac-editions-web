@@ -40,13 +40,17 @@ export class BridgeTransport implements Transport {
 }
 
 /**
- * The platform with the bridge: real paths from the system's file dialog (on Windows) and Explorer for
+ * The platform with the bridge: real paths from the system's file and folder dialogs (on Windows) and Explorer for
  * "Show in folder". A browser gives dropped files no path, so drops do nothing, and there is no DVD drive.
  */
 export const bridgePlatform: Platform = {
   async pickImages() {
     const response = await fetch('/__installer/pick', { method: 'POST' });
     return response.ok ? ((await response.json()) as string[]) : [];
+  },
+  async pickFolder(title) {
+    const response = await fetch('/__installer/pick-folder', { method: 'POST', body: title });
+    return response.ok ? ((await response.json()) as string | null) : null;
   },
   watchDrops(handlers) {
     return watchPageDrops(handlers, () => null);
