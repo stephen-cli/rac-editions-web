@@ -18,22 +18,33 @@ struct Installer {
 }
 
 /// The installer's command line: RAC_INSTALLER as a JSON array (program, then arguments), or else, in a
-/// debug build, rac-editions' reference installer checked out beside this repository (which in turn
-/// finds wrench and the disc unpacks beside it, for development only). A release build will carry the
+/// debug build, the installer core from rac-editions checked out beside this repository
+/// (installer/core/build, built with CMake), serving the Executive Edition's payload (tools/release.py's
+/// build/payload) with its disc hashes kept in build/installer-data. A release build will carry the
 /// installer core as a sidecar, `rac-installer` (externalBin, one per target triple), started with
-/// `--serve --payload <dir>`: each edition release's payload lives in the app's data folder, bundled
-/// at first and downloaded as new releases come out.
+/// `--serve --payload <dir> --data <dir>`: each edition release's payload lives in the app's data
+/// folder, bundled at first and downloaded as new releases come out.
 fn installer_command() -> Result<Vec<String>, String> {
     if let Ok(json) = std::env::var("RAC_INSTALLER") {
         return serde_json::from_str(&json)
             .map_err(|error| format!("RAC_INSTALLER is not a JSON array of strings: {error}"));
     }
     if cfg!(debug_assertions) {
-        let script = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../../rac-editions/editions/rac1-executive/tools/install.py"
-        );
-        return Ok(vec!["python".into(), script.into(), "--serve".into()]);
+        let editions = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../rac-editions");
+        let program = if cfg!(windows) {
+            "rac-installer.exe"
+        } else {
+            "rac-installer"
+        };
+        let edition = format!("{editions}/editions/rac1-executive/build");
+        return Ok(vec![
+            format!("{editions}/installer/core/build/{program}"),
+            "--serve".into(),
+            "--payload".into(),
+            format!("{edition}/payload"),
+            "--data".into(),
+            format!("{edition}/installer-data"),
+        ]);
     }
     Err("No installer is set: RAC_INSTALLER is empty.".into())
 }

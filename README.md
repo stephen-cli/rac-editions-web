@@ -37,8 +37,10 @@ protocol and recognises disc images by file name (`Ratchet & Clank (Europe).iso`
 (USA).iso`); `?pace=0.1` runs it ten times faster.
 
 With `?installer=real` the dev server runs the real installer instead (`apps/builder/vite/installerBridge.ts`):
-rac-editions' `install.py --serve`, checked out beside this repository, or the command in `RAC_INSTALLER`
-(a JSON array). The file dialog is then the system's (Windows), so images have their real paths.
+rac-editions' installer core, `rac-installer --serve`, checked out beside this repository and built with CMake
+(`installer/core/build`), serving the Executive Edition's payload (its `tools/release.py` writes
+`build/payload`); or the command in `RAC_INSTALLER` (a JSON array). The desktop shell's debug build runs the
+same. The file dialog is then the system's (Windows), so images have their real paths.
 `REAL_INSTALLER=1 pnpm --filter @rac-editions/builder e2e` runs the wizard that way on the real discs
 (`RAC1_IMAGE`, `RAC2_IMAGE`).
 
