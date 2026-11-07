@@ -1,0 +1,62 @@
+# The builder's installers, made when a release of this repository is published: for each platform, the
+# rac-editions release pinned in apps/builder/installer.json gives the installer core and the editions'
+# payloads (scripts/stage-installer.ts), and Tauri bundles them with the app (tauri.release.conf.json). The
+# installers it makes are attached to the release. Not yet signed.
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: Desktop app (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write   # to attach the installers to the release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - name: macOS, Apple Silicon
+            runner: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS, Intel
+            runner: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/builder/src-tauri
+          key: ${{ matrix.target }}
+      - name: The pinned installer core and payloads
+        run: node scripts/stage-installer.ts --target ${{ matrix.target }}
+      - name: Build the app and its installers
+        run: pnpm --filter @rac-editions/builder tauri build --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }}
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bundle=apps/builder/src-tauri/target/${{ matrix.target }}/release/bundle
+          find "$bundle" -maxdepth 2 -type f \( -name '*.msi' -o -name '*-setup.exe' -o -name '*.deb' -o -name '*.rpm' \
+            -o -name '*.AppImage' -o -name '*.dmg' \) -print0 | xargs -0 gh release upload "${{ github.event.release.tag_name }}" --clobber

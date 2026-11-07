@@ -17,28 +17,43 @@ struct Installer {
     child: Mutex<Option<Child>>,
 }
 
+/// The edition the builder makes, whose payload the installer serves.
+const EDITION: &str = "rac1-executive";
+
+/// The installer core's program name on this platform.
+const INSTALLER_PROGRAM: &str = if cfg!(windows) {
+    "rac-installer.exe"
+} else {
+    "rac-installer"
+};
+
+/// PATH as the installer and its messages should name it: Windows' "\\?\" form, which Tauri's resource
+/// and data folders come in, made plain ("\\?\C:\x" is C:\x, "\\?\UNC\server\share" is \\server\share).
+fn plain_path(path: &std::path::Path) -> String {
+    let text = path.to_string_lossy();
+    if let Some(share) = text.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{share}");
+    }
+    text.strip_prefix(r"\\?\").unwrap_or(&text).to_string()
+}
+
 /// The installer's command line: RAC_INSTALLER as a JSON array (program, then arguments), or else, in a
 /// debug build, the installer core from rac-editions checked out beside this repository
-/// (installer/core/build, built with CMake), serving the Executive Edition's payload (tools/release.py's
-/// build/payload) with its disc hashes kept in build/installer-data. A release build will carry the
-/// installer core as a sidecar, `rac-installer` (externalBin, one per target triple), started with
-/// `--serve --payload <dir> --data <dir>`: each edition release's payload lives in the app's data
-/// folder, bundled at first and downloaded as new releases come out.
-fn installer_command() -> Result<Vec<String>, String> {
+/// (installer/core/build, built with CMake), serving the edition's payload (tools/release.py's
+/// build/payload) with its disc hashes kept in build/installer-data. A release build carries the core
+/// as a sidecar (tauri.release.conf.json's externalBin, beside the builder's own executable) and the
+/// pinned rac-editions release's payload as a resource (scripts/stage-installer.ts stages both), and
+/// keeps the disc hashes in the app's data folder.
+fn installer_command(app: &AppHandle) -> Result<Vec<String>, String> {
     if let Ok(json) = std::env::var("RAC_INSTALLER") {
         return serde_json::from_str(&json)
             .map_err(|error| format!("RAC_INSTALLER is not a JSON array of strings: {error}"));
     }
     if cfg!(debug_assertions) {
         let editions = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../rac-editions");
-        let program = if cfg!(windows) {
-            "rac-installer.exe"
-        } else {
-            "rac-installer"
-        };
-        let edition = format!("{editions}/editions/rac1-executive/build");
+        let edition = format!("{editions}/editions/{EDITION}/build");
         return Ok(vec![
-            format!("{editions}/installer/core/build/{program}"),
+            format!("{editions}/installer/core/build/{INSTALLER_PROGRAM}"),
             "--serve".into(),
             "--payload".into(),
             format!("{edition}/payload"),
@@ -46,7 +61,31 @@ fn installer_command() -> Result<Vec<String>, String> {
             format!("{edition}/installer-data"),
         ]);
     }
-    Err("No installer is set: RAC_INSTALLER is empty.".into())
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("Couldn't find the builder's own program: {error}"))?;
+    let program = executable
+        .parent()
+        .ok_or("The builder's program is in no folder.")?
+        .join(INSTALLER_PROGRAM);
+    let payload = app
+        .path()
+        .resource_dir()
+        .map_err(|error| format!("Couldn't find the builder's resources: {error}"))?
+        .join("payloads")
+        .join(EDITION);
+    let data = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Couldn't find the builder's data folder: {error}"))?
+        .join("installer");
+    Ok(vec![
+        plain_path(&program),
+        "--serve".into(),
+        "--payload".into(),
+        plain_path(&payload),
+        "--data".into(),
+        plain_path(&data),
+    ])
 }
 
 /// Starts the installer. Its stdout lines (the protocol) arrive in the page as "installer://line"
@@ -58,7 +97,7 @@ fn installer_start(app: AppHandle, installer: State<'_, Installer>) -> Result<()
     if let Some(mut old) = installer.child.lock().unwrap().take() {
         let _ = old.kill();
     }
-    let command = installer_command()?;
+    let command = installer_command(&app)?;
     let (program, args) = command
         .split_first()
         .ok_or("The installer's command line is empty.")?;

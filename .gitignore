@@ -163,3 +163,6 @@ playwright-report/
 # Tauri
 apps/builder/src-tauri/target/
 apps/builder/src-tauri/gen/
+# rac-editions' installer and payloads, staged for a release build (scripts/stage-installer.ts)
+apps/builder/src-tauri/binaries/
+apps/builder/src-tauri/payloads/
