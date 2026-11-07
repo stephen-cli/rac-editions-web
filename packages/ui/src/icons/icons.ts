@@ -20,6 +20,7 @@ export const ICONS = {
   drive: '<rect x="2.5" y="7" width="19" height="10" rx="1.5"/><path d="M6 13.5h8"/><circle cx="18" cy="13.5" r=".9" fill="currentColor"/>',
   disc: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" opacity=".6"/>',
   file: '<path d="M6 2.5h8l4 4v15H6z"/><path d="M14 2.5v4h4"/><circle cx="12" cy="14" r="3.2"/>',
+  folder: '<path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h4.6l2 2.2H20a1.5 1.5 0 0 1 1.5 1.5v9.3A1.5 1.5 0 0 1 20 19.5H4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M2.5 10h19" opacity=".6"/>',
   pc: '<rect x="3" y="4" width="18" height="12" rx="1.2"/><path d="M8.5 20h7M12 16v4"/>',
   console: '<rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6 12h5"/><circle cx="17" cy="12" r="1" fill="currentColor"/>',
   // interface

@@ -12,7 +12,7 @@ const toasts = reactive<Toast[]>([]);
 let nextId = 1;
 
 /**
- * Short notes that appear at the bottom of the window and leave by themselves ("Ratchet & Clank (PAL)
+ * Short notes that appear at the top right of the window and leave by themselves ("Ratchet & Clank (PAL)
  * recognised."). RacToaster shows them and announces each to screen readers.
  */
 export function useToasts(): { toasts: DeepReadonly<Toast[]>; toast: (text: string) => void } {

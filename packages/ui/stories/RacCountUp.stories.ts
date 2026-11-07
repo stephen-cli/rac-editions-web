@@ -9,6 +9,7 @@ const meta = {
   argTypes: {
     value: { control: 'number' },
     from: { control: 'number' },
+    max: { control: 'number' },
     duration: { control: { type: 'range', min: 0, max: 4000, step: 100 } },
   },
   args: { value: 4220000000, from: 0, duration: 2000 },
@@ -25,9 +26,12 @@ export const Figure: Story = {
   },
 };
 
-/** The builder's sector counter: new values arrive several times a second and each one is counted to. */
+/**
+ * The builder's sector counter: new values arrive several times a second and each one is counted to. With
+ * `max` the image's sector count, the label beside it stays put from the first sector to the last.
+ */
 export const LiveCounter: Story = {
-  args: { value: 0, from: undefined, duration: 250 },
+  args: { value: 0, from: undefined, duration: 250, max: 2058796 },
   parameters: { controls: { disable: true } },
   render: (args) => ({
     components: { RacCountUp },

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToasts } from '../motion/toasts';
 
-/** Where toasts from useToasts() appear, at the top centre; put one in the app. Screen readers hear each as it arrives. */
+/** Where toasts from useToasts() appear, at the top right; put one in the app. Screen readers hear each as it arrives. */
 const { toasts } = useToasts();
 </script>
 
@@ -24,14 +24,14 @@ const { toasts } = useToasts();
 <style scoped>
 .rac-toaster {
   position: fixed;
-  /* At the top, under a title bar, where a toast covers no action button while it lasts. */
+  /* At the top right, under a title bar, where a toast covers no action button while it lasts. */
   top: calc(56px + env(safe-area-inset-top, 0px));
-  left: 50%;
+  right: calc(16px + env(safe-area-inset-right, 0px));
   z-index: 60;
   display: grid;
+  justify-items: end;
   gap: 8px;
-  width: min(440px, calc(100% - 32px));
-  transform: translateX(-50%);
+  width: min(400px, calc(100% - 32px));
   pointer-events: none;
 }
 .rac-toaster__toast {

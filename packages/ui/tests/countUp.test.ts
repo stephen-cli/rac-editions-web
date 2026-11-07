@@ -6,7 +6,7 @@ import { RacCountUp } from '../src';
 /** The digits a sighted reader sees, and what a screen reader reads. */
 function read(wrapper: ReturnType<typeof mount>): { shown: string; spoken: string } {
   return {
-    shown: wrapper.find('[aria-hidden="true"]').text(),
+    shown: wrapper.find('.rac-count-up__shown').text(),
     spoken: wrapper.find('.rac-sr-only').text(),
   };
 }
@@ -63,5 +63,12 @@ describe('RacCountUp', () => {
     expect(read(wrapper).shown).toBe('100');
     await wrapper.setProps({ value: 5000 });
     expect(read(wrapper).shown).toBe('5,000');
+  });
+
+  it('keeps the room its largest value needs, and each digit the width of a 0', () => {
+    const wrapper = mount(RacCountUp, { props: { value: 12, max: 2058796 } });
+    expect(read(wrapper).shown).toBe('12');
+    expect(wrapper.find('.rac-count-up__room').text()).toBe('2,058,796');
+    expect(wrapper.findAll('.rac-count-up__shown .rac-count-up__digit')).toHaveLength(2);
   });
 });
