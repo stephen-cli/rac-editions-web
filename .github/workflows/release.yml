@@ -1,7 +1,8 @@
 # The builder's installers, made when a release of this repository is published: for each platform, the
 # rac-editions release pinned in apps/builder/installer.json gives the installer core and the editions'
-# payloads (scripts/stage-installer.ts), and Tauri bundles them with the app (tauri.release.conf.json). The
-# installers it makes are attached to the release. Not yet signed.
+# payloads (scripts/stage-installer.ts), and Tauri bundles them with the app (tauri.release.conf.json). Every
+# platform builds, on a release and when run by hand; a release carries the installers of the platforms marked
+# `ship` in the matrix, the ones tested on their own hardware (Windows for now). Not yet signed.
 name: release
 
 on:
@@ -25,6 +26,7 @@ jobs:
           - name: Windows
             runner: windows-latest
             target: x86_64-pc-windows-msvc
+            ship: true
           - name: Linux
             runner: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
@@ -52,7 +54,7 @@ jobs:
       - name: Build the app and its installers
         run: pnpm --filter @rac-editions/builder tauri build --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }}
       - name: Attach to the release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && matrix.ship
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

@@ -45,10 +45,11 @@ same. The file dialog is then the system's (Windows), so images have their real 
 (`RAC1_IMAGE`, `RAC2_IMAGE`).
 
 A release build bundles rac-editions' installer core and the editions' payloads from the rac-editions
-release pinned in `apps/builder/installer.json`: `node scripts/stage-installer.ts` stages them (`--from
-../rac-editions` stages a local checkout's build instead), then
-`pnpm --filter @rac-editions/builder tauri build --config src-tauri/tauri.release.conf.json` builds the app with
-them. The `release` workflow does both for every platform when a release is published.
+release pinned in `apps/builder/installer.json`, with their licence (GPL-3.0-or-later) and where their source
+is: `node scripts/stage-installer.ts` stages them (`--from ../rac-editions` stages a local checkout's build
+instead), then `pnpm --filter @rac-editions/builder tauri build --config src-tauri/tauri.release.conf.json`
+builds the app with them. The `release` workflow does both for every platform when a release is published, and
+attaches the installers of the platforms its matrix marks `ship` (Windows for now).
 
 After changing `packages/ui/src/tokens/tokens.ts`, run `pnpm --filter @rac-editions/ui run tokens` to
 write `tokens.css`; a test fails while the two differ.

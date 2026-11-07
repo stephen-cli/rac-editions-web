@@ -3,7 +3,8 @@
   "bundle": {
     "externalBin": ["binaries/rac-installer"],
     "resources": {
-      "payloads/": "payloads/"
+      "payloads/": "payloads/",
+      "licences/": "licences/"
     }
   }
 }

@@ -1,16 +1,18 @@
 /**
  * Stages what a release build of the builder bundles: rac-editions' installer core for the target platform, as
- * the Tauri sidecar `rac-installer`, and each edition's payload, from the rac-editions release pinned in
- * apps/builder/installer.json (rac-editions' installer/README.md, "Releases").
+ * the Tauri sidecar `rac-installer`, each edition's payload, and the licences that come with them, from the
+ * rac-editions release pinned in apps/builder/installer.json (rac-editions' installer/README.md, "Releases").
  *
  *   node scripts/stage-installer.ts                       the pinned release's assets, for this machine
  *   node scripts/stage-installer.ts --target TRIPLE       ... for another target (a Mac's other architecture)
  *   node scripts/stage-installer.ts --from DIR            a rac-editions checkout's own build instead
  *                                                         (installer/core/build, editions/<edition>/build/payload)
  *
- * They land in apps/builder/src-tauri/binaries/rac-installer-<triple>[.exe] and src-tauri/payloads/<edition>/,
- * which src-tauri/tauri.release.conf.json bundles. Neither is committed: they are rac-editions' (GPL), shipped
- * beside the builder as a separate program.
+ * They land in apps/builder/src-tauri/binaries/rac-installer-<triple>[.exe], src-tauri/payloads/<edition>/ and
+ * src-tauri/licences/, which src-tauri/tauri.release.conf.json bundles. None is committed: the installer and
+ * payloads are rac-editions' (GPL-3.0-or-later), shipped beside the builder as a separate program, so the app
+ * carries the GPL, rac-editions' licensing notes and where their source is (NOTICE.txt), with the builder's
+ * own MIT licence.
  */
 import { execFileSync } from 'node:child_process';
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -30,6 +32,9 @@ interface Pin {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TAURI = join(ROOT, 'apps/builder/src-tauri');
 const PIN_FILE = join(ROOT, 'apps/builder/installer.json');
+const LICENCES = join(TAURI, 'licences');
+/** rac-editions' licence files: the GPL's text and its licensing notes */
+const RAC_EDITIONS_LICENCES = ['COPYING', 'LICENSE.md'];
 
 function argument(name: string): string | undefined {
   const at = process.argv.indexOf(name);
@@ -98,6 +103,30 @@ function sidecarPath(triple: string): string {
   return join(TAURI, 'binaries', `rac-installer-${triple}${suffix}`);
 }
 
+/**
+ * The licences beside the bundled installer: rac-editions' files (FILES, by name), NOTICE.txt naming what is
+ * bundled and the source it is built from (SOURCE, a URL or a checkout's commit), and the builder's LICENSE.
+ */
+function writeLicences(pin: Pin, files: Map<string, Buffer>, source: string): void {
+  rmSync(LICENCES, { recursive: true, force: true });
+  mkdirSync(join(LICENCES, 'rac-editions'), { recursive: true });
+  for (const [name, bytes] of files) writeFileSync(join(LICENCES, 'rac-editions', name), bytes);
+  copyFileSync(join(ROOT, 'LICENSE'), join(LICENCES, 'LICENSE'));
+  writeFileSync(
+    join(LICENCES, 'NOTICE.txt'),
+    [
+      'Editions Builder is free software under the MIT licence (LICENSE).',
+      '',
+      `It runs rac-installer and bundles the edition payloads (${pin.editions.join(', ')}) from rac-editions,`,
+      'a separate program: free software under the GNU General Public License, version 3 or (at your option)',
+      'any later version (rac-editions/COPYING), with the licensing notes in rac-editions/LICENSE.md.',
+      `Their source: ${source}`,
+      '',
+    ].join('\n'),
+  );
+  console.log(`${LICENCES}: ${source}`);
+}
+
 async function fromRelease(pin: Pin, triple: string): Promise<void> {
   const base = `https://github.com/${pin.repository}/releases/download/${encodeURIComponent(pin.release)}`;
   const sidecar = sidecarPath(triple);
@@ -112,6 +141,10 @@ async function fromRelease(pin: Pin, triple: string): Promise<void> {
     unzip(archive, folder);
     console.log(`${folder}: ${pin.release}`);
   }
+  const raw = `https://raw.githubusercontent.com/${pin.repository}/${encodeURIComponent(pin.release)}`;
+  const files = new Map<string, Buffer>();
+  for (const name of RAC_EDITIONS_LICENCES) files.set(name, await download(`${raw}/${name}`));
+  writeLicences(pin, files, `https://github.com/${pin.repository}/tree/${pin.release}`);
 }
 
 function fromCheckout(pin: Pin, checkout: string, triple: string): void {
@@ -126,6 +159,9 @@ function fromCheckout(pin: Pin, checkout: string, triple: string): void {
     cpSync(payload, join(TAURI, 'payloads', edition), { recursive: true });
     console.log(`${join(TAURI, 'payloads', edition)}: ${payload}`);
   }
+  const files = new Map(RAC_EDITIONS_LICENCES.map((name) => [name, readFileSync(join(checkout, name))]));
+  const commit = execFileSync('git', ['-C', checkout, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  writeLicences(pin, files, `https://github.com/${pin.repository}/tree/${commit} (a local checkout)`);
 }
 
 async function main(): Promise<void> {
