@@ -61,7 +61,7 @@ export function watchPageDrops({ hover, drop }: DropHandlers, pathOf: (file: Fil
 
 /** The default file name for a new image. */
 export function defaultFileName(game: string, editionName: string): string {
-  return `${game} - ${editionName}.iso`;
+  return `${game} ${editionName}.iso`;
 }
 
 /** The folder part of a path, with its trailing separator; empty for a bare file name. */

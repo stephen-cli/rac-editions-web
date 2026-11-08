@@ -85,7 +85,7 @@ describe('the session', () => {
   it('names the new image after the base disc, until the player edits it', async () => {
     const store = await session();
     await store.addImage('E:\\PS2\\Ratchet & Clank (Europe).iso', 'rac1');
-    expect(store.output.path).toBe('E:\\PS2\\Ratchet & Clank - Executive Edition.iso');
+    expect(store.output.path).toBe('E:\\PS2\\Ratchet & Clank Executive Edition.iso');
     expect(store.lastOpen).toBe('review');
     store.setOutputPath('F:\\mine.iso');
     await store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac1');
@@ -173,7 +173,7 @@ describe('a new image\'s path', () => {
     ['C:\\Users\\steph\\Desktop\\', 'End the path with a file name for the image, such as Edition.iso.'],
     ['C:\\Games\\.iso', 'Give the image a name before .iso.'],
     ['C:\\Games\\a?b.iso', 'A file name can\'t contain < > : " | ? or *.'],
-    ['C:\\Games\\Ratchet & Clank - Executive Edition.ISO', ''],
+    ['C:\\Games\\Ratchet & Clank Executive Edition.ISO', ''],
     ['\\\\nas\\games\\Edition.iso', ''],
     ['/home/player/Edition.iso', ''],
   ])('%j: %j', (path, problem) => expect(outputPathProblem(path)).toBe(problem));

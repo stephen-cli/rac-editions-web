@@ -10,7 +10,7 @@ const request = (overrides: Partial<BuildRequest> = {}): BuildRequest => ({
   edition: 'rac1-executive',
   discs: { rac1: 'D:\\Games\\Ratchet & Clank (Europe).iso', rac2: 'D:\\Games\\Going Commando (USA).iso' },
   options: { economy: 'skill', without: [] },
-  output: { mode: 'new', path: 'D:\\Games\\Ratchet & Clank - Executive Edition.iso' },
+  output: { mode: 'new', path: 'D:\\Games\\Ratchet & Clank Executive Edition.iso' },
   ...overrides,
 });
 

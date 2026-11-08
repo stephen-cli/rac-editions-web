@@ -32,7 +32,7 @@ async function toReview(page: Page, withGoingCommando: boolean): Promise<void> {
   if (withGoingCommando) await expect(page.getByText('Going Commando (USA).iso')).toBeVisible();
   await shot(page, '2-discs');
   await page.getByRole('button', { name: 'Next: output' }).click();
-  await expect(page.getByLabel('Save as')).toHaveValue('D:\\Games\\PS2\\Ratchet & Clank - Executive Edition.iso');
+  await expect(page.getByLabel('Save as')).toHaveValue('D:\\Games\\PS2\\Ratchet & Clank Executive Edition.iso');
   await shot(page, '3-output');
   await page.getByRole('button', { name: 'Next: review' }).click();
   await expect(page.getByRole('heading', { name: 'Review and build' })).toBeVisible();
@@ -58,7 +58,7 @@ test('builds the edition with both discs and a setting changed', async ({ page }
   await page.waitForTimeout(700);
   await shot(page, '6-build');
   await expect(page.getByRole('heading', { name: 'Executive Edition is ready' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('D:\\Games\\PS2\\Ratchet & Clank - Executive Edition.iso')).toBeVisible();
+  await expect(page.getByText('D:\\Games\\PS2\\Ratchet & Clank Executive Edition.iso')).toBeVisible();
   await page.getByRole('tab', { name: 'PS2 or PS3' }).click();
   await expect(page.getByRole('tabpanel')).toContainText('Open PS2 Loader');
   await shot(page, '7-done');
@@ -118,7 +118,7 @@ test('checks the new image\'s path, and picks its folder with a dialog', async (
   await expect(page.getByRole('button', { name: 'Next: review' })).toBeDisabled();
   await shot(page, '3-path-problem');
   await page.getByRole('button', { name: 'Choose folder' }).click();
-  await expect(path).toHaveValue('E:\\Builds\\Ratchet & Clank - Executive Edition.iso');
+  await expect(path).toHaveValue('E:\\Builds\\Ratchet & Clank Executive Edition.iso');
   await expect(page.getByRole('button', { name: 'Next: review' })).toBeEnabled();
 });
 
