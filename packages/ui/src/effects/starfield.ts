@@ -1,8 +1,7 @@
 /**
  * The starfield: stars in 3D drifting slowly towards the viewer and twinkling. Each star is a soft glow, a
- * bright core in a halo, added onto the sky; the brightest few carry a cross-shaped flare. setWarp(1) runs
- * them past at speed, drawn as streaks, for the builder's warp during a build. With reduced motion it draws
- * one still frame.
+ * bright core in a halo, added onto the sky. setWarp(1) runs them past at speed, drawn as streaks, for the
+ * builder's warp during a build. With reduced motion it draws one still frame.
  */
 
 export interface Starfield {
@@ -17,7 +16,6 @@ interface Star {
   z: number;
   colour: number;
   size: number;
-  flare: number;
   twinkle: number;
   phase: number;
 }
@@ -34,8 +32,6 @@ const COLOURS: [rgb: string, weight: number][] = [
   ['242,181,58', 0.07],
   ['255,214,190', 0.08],
 ];
-// The share of stars that carry a flare, and how bright a flare is at most.
-const FLARE_SHARE = 0.06;
 // A glow sprite is drawn at this many times the star's core radius.
 const GLOW_SCALE = 9;
 const SPRITE_SIZE = 64;
@@ -106,14 +102,13 @@ export function createStarfield(canvas: HTMLCanvasElement, host: HTMLElement, st
     star.colour = pickColour();
     // Most stars are faint points; a long tail of brighter ones.
     star.size = 0.45 + Math.random() ** 2 * 1.9;
-    star.flare = Math.random() < FLARE_SHARE ? 0.6 + Math.random() * 0.4 : 0;
     star.twinkle = 0.4 + Math.random() * 1.2;
     star.phase = Math.random() * Math.PI * 2;
     return star;
   }
 
   function newStar(): Star {
-    return spawn({ x: 0, y: 0, z: 1, colour: 0, size: 1, flare: 0, twinkle: 1, phase: 0 }, false);
+    return spawn({ x: 0, y: 0, z: 1, colour: 0, size: 1, twinkle: 1, phase: 0 }, false);
   }
 
   function resize(): void {
@@ -126,24 +121,6 @@ export function createStarfield(canvas: HTMLCanvasElement, host: HTMLElement, st
     const wanted = Math.max(260, Math.min(1100, Math.round((host.clientWidth * host.clientHeight) / 1100)));
     stars = Array.from({ length: wanted }, newStar);
     if (still) draw(0);
-  }
-
-  /** A flare: a thin cross of light through the star, fading out along each arm, and a fainter diagonal. */
-  function drawFlare(x: number, y: number, length: number, rgb: string, alpha: number): void {
-    for (const [angle, strength] of [[0, 1], [Math.PI / 2, 1], [Math.PI / 4, 0.3], [-Math.PI / 4, 0.3]] as const) {
-      const dx = Math.cos(angle) * length * strength;
-      const dy = Math.sin(angle) * length * strength;
-      const arm = draw2d.createLinearGradient(x - dx, y - dy, x + dx, y + dy);
-      arm.addColorStop(0, `rgba(${rgb},0)`);
-      arm.addColorStop(0.5, `rgba(${rgb},${alpha * strength})`);
-      arm.addColorStop(1, `rgba(${rgb},0)`);
-      draw2d.strokeStyle = arm;
-      draw2d.lineWidth = dpr * 0.9;
-      draw2d.beginPath();
-      draw2d.moveTo(x - dx, y - dy);
-      draw2d.lineTo(x + dx, y + dy);
-      draw2d.stroke();
-    }
   }
 
   function draw(dt: number): void {
@@ -195,10 +172,6 @@ export function createStarfield(canvas: HTMLCanvasElement, host: HTMLElement, st
       const glow = radius * GLOW_SCALE;
       draw2d.globalAlpha = alpha;
       draw2d.drawImage(sprites[star.colour]!, head.x - glow / 2, head.y - glow / 2, glow, glow);
-      if (star.flare > 0) {
-        draw2d.globalAlpha = 1;
-        drawFlare(head.x, head.y, radius * 24 * star.flare, rgb, alpha * star.flare);
-      }
     }
     draw2d.globalAlpha = 1;
     draw2d.globalCompositeOperation = 'source-over';
