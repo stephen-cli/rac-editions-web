@@ -102,6 +102,25 @@ describe('the session', () => {
     expect(store.request?.discs).toEqual({ rac1: 'D:\\Ratchet & Clank (Europe).iso' });
   });
 
+  it('follows a new image written in one pass, with no check after it', async () => {
+    const store = await session();
+    await store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac1');
+    await store.addImage('D:\\Going Commando (USA).iso', 'rac2');
+    store.output.mode = 'new';
+    store.output.path = 'E:\\PS2\\Ratchet & Clank Executive Edition.iso';
+    await store.startBuild();
+    expect(store.build.state).toBe('done');
+    expect(store.build.rows.map((row) => [row.label, row.state])).toEqual([
+      ['Check Ratchet & Clank (PAL)', 'done'],
+      ['Check Going Commando (USA)', 'done'],
+      ["Convert Going Commando's data", 'done'],
+      ['Prepare the levels and HelpDesk', 'done'],
+      ['Write the new image', 'done'],
+    ]);
+    expect(store.sectors.written).toBe(store.sectors.total);
+    expect(store.overall).toBe(1);
+  });
+
   it('follows an in-place build stage by stage, telling the two verifies and writes apart', async () => {
     const store = await session();
     await store.addImage('D:\\Ratchet & Clank (Europe).iso', 'rac1');

@@ -6,8 +6,10 @@ import type { BuildRequest, Command, Edition, ErrorCode, Identified, InstallerEv
  * one and for its tests. It recognises disc images by file name, as no image is read, and spends a scaled
  * amount of time on each stage, in the real installer's order and units:
  *   identify: hash (bytes)
- *   build:    verify per disc (bytes), convert (0..14), write (bytes), patch (0..100), write the .restore
- *             file (in place only, bytes), verify the finished image (bytes)
+ *   build, a new image: verify per disc (bytes), convert (0..14), patch (0..100: the levels and HelpDesk
+ *             lines made ready), write (bytes: the image in one pass, hashed as it is written)
+ *   build, in place: verify per disc (bytes), convert (0..14), write (bytes), patch (0..100), write the
+ *             .restore file (bytes), verify the finished image (bytes)
  * Like the real installer, it remembers the discs it has hashed, so a build's verify of a disc checked
  * when it was added finishes at once. Its log lines are worded as the real installer's are.
  */
@@ -175,10 +177,16 @@ export class FakeInstaller implements Transport {
     const steps: Step[] = [verify('rac1', 'Ratchet & Clank (PAL)')];
     if (command.discs.rac2) steps.push(verify('rac2', 'Going Commando (USA)'));
     steps.push(['convert', 14, SECONDS.convert, plan.in.includes('charge_boots') ? 'Charge Boots: model and textures from Going Commando' : 'Nothing to convert']);
-    steps.push(['write', SIZES.edition, SECONDS.write, command.output.mode === 'new' ? `Copying the image to ${command.output.path}` : 'Updating the image in place']);
-    steps.push(['patch', 100, SECONDS.patch, `Applied the edition: ${plan.in.length} switchable features in, ${plan.left_out.length} left out`]);
-    if (command.output.mode === 'in_place') steps.push(['write', 52_428_800, SECONDS.restore, 'Saved the restore file beside the image']);
-    steps.push(['verify', SIZES.edition, SECONDS.check, 'Hashed the finished image']);
+    const applied = `Applied the edition: ${plan.in.length} switchable features in, ${plan.left_out.length} left out`;
+    if (command.output.mode === 'new') {
+      steps.push(['patch', 100, SECONDS.patch, 'The levels and HelpDesk lines are ready']);
+      steps.push(['write', SIZES.edition, SECONDS.write, applied, `writing ${command.output.path} in one pass`]);
+    } else {
+      steps.push(['write', SIZES.edition, SECONDS.write, 'Updating the image in place']);
+      steps.push(['patch', 100, SECONDS.patch, applied]);
+      steps.push(['write', 52_428_800, SECONDS.restore, 'Saved the restore file beside the image']);
+      steps.push(['verify', SIZES.edition, SECONDS.check, 'Hashed the finished image']);
+    }
 
     for (const [stage, total, seconds, line, before] of steps) {
       if (before) log(before);

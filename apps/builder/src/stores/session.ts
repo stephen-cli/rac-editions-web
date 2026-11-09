@@ -25,6 +25,8 @@ export interface StageRow {
   state: 'waiting' | 'active' | 'done';
   done: number;
   total: number;
+  /** Its rough share of the build's time, for the overall percentage. */
+  weight: number;
 }
 
 /** `checking`: the disc the feature needs is still being checked. */
@@ -36,8 +38,6 @@ export interface Added {
   row: DiscKey;
 }
 
-// How much of a build each kind of row takes, roughly, for the overall percentage.
-const WEIGHT: Record<string, number> = { verify: 12, convert: 8, write: 40, patch: 10, restore: 5, check: 15 };
 const SECTOR = 2048;
 
 const WORDS: Record<ErrorCode, string> = {
@@ -338,19 +338,30 @@ export const useSession = defineStore('session', () => {
     return planError.value;
   }
 
-  /** The rows the build will show, in the installer's order, before any progress arrives. */
+  /**
+   * The rows the build will show, in the installer's order, before any progress arrives, each with its rough share
+   * of the time. A new image is written in one pass: the levels and HelpDesk lines are made ready, then patched as
+   * the writing reaches them, and the image is hashed as it is written. An image updated in place is copied and
+   * patched, its restore file saved, and then checked in full.
+   */
   function expectedRows(): StageRow[] {
     const rows: StageRow[] = [];
-    const add = (stage: Stage, label: string) => rows.push({ stage, label, state: 'waiting', done: 0, total: 0 });
+    const add = (stage: Stage, label: string, weight: number) =>
+      rows.push({ stage, label, state: 'waiting', done: 0, total: 0, weight });
     for (const key of ['rac1', 'rac2'] as const) {
       const disc = edition.value?.discs[key];
-      if (hasDisc(key) && disc) add('verify', `Check ${disc.name} (${disc.region})`);
+      if (hasDisc(key) && disc) add('verify', `Check ${disc.name} (${disc.region})`, 12);
     }
-    add('convert', hasDisc('rac2') ? "Convert Going Commando's data" : 'Prepare the edition');
-    add('write', output.mode === 'new' ? 'Write the new image' : 'Update the image');
-    add('patch', 'Apply the edition');
-    if (output.mode === 'in_place') add('write', 'Save the restore file');
-    add('verify', 'Check the finished image');
+    add('convert', hasDisc('rac2') ? "Convert Going Commando's data" : 'Prepare the edition', 8);
+    if (output.mode === 'new') {
+      add('patch', 'Prepare the levels and HelpDesk', 5);
+      add('write', 'Write the new image', 75);
+    } else {
+      add('write', 'Update the image', 40);
+      add('patch', 'Apply the edition', 10);
+      add('write', 'Save the restore file', 5);
+      add('verify', 'Check the finished image', 15);
+    }
     return rows;
   }
 
@@ -367,7 +378,7 @@ export const useSession = defineStore('session', () => {
       let next = build.rows.findIndex((row, at) => at >= from && row.stage === stage && row.state === 'waiting');
       if (next < 0) {
         // A stage the builder didn't expect: show it rather than lose it.
-        build.rows.push({ stage, label: stage, state: 'waiting', done: 0, total: 0 });
+        build.rows.push({ stage, label: stage, state: 'waiting', done: 0, total: 0, weight: 10 });
         next = build.rows.length - 1;
       }
       for (let at = build.index; at < next; at++) build.rows[at]!.state = 'done';
@@ -379,11 +390,10 @@ export const useSession = defineStore('session', () => {
   const overall = computed(() => {
     let sum = 0;
     let got = 0;
-    build.rows.forEach((row, at) => {
-      const weight = WEIGHT[row.label === 'Save the restore file' ? 'restore' : at === build.rows.length - 1 ? 'check' : row.stage] ?? 10;
-      sum += weight;
-      got += weight * (row.state === 'done' ? 1 : row.total ? row.done / row.total : 0);
-    });
+    for (const row of build.rows) {
+      sum += row.weight;
+      got += row.weight * (row.state === 'done' ? 1 : row.total ? row.done / row.total : 0);
+    }
     return sum ? got / sum : 0;
   });
 
