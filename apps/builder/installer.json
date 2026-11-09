@@ -1,5 +1,5 @@
 {
   "repository": "stephen-cli/rac-editions",
-  "release": "v0.1.0",
+  "release": "v0.2.0",
   "editions": ["rac1-executive"]
 }
