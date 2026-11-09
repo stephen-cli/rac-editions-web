@@ -1,6 +1,6 @@
 [package]
 name = "editions-builder"
-version = "0.1.0"
+version = "0.2.0"
 description = "The Editions Builder: makes an edition from the player's own disc images"
 edition = "2024"
 license = "MIT"
